@@ -30,8 +30,8 @@
                         'soft-gray': '#F5F5F5',
                         'jp-sage': '#A9B7AA',
                         'warm-orange': '#FF8A65',
-                        'balance-pos': '#4CAF50', // 正餘額綠
-                        'balance-neg': '#EF5350'  // 負餘額紅
+                        'balance-pos': '#4CAF50',
+                        'balance-neg': '#EF5350'
                     }
                 }
             }
@@ -314,7 +314,7 @@
                 </div>
             </div>
 
-            <!-- 住宿與必買 (省略重複結構，保持原樣) -->
+            <!-- 住宿清單 -->
             <div class="bg-white rounded-3xl p-6 card-shadow">
                 <h3 class="font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2"><i class="fa-solid fa-hotel text-purple-500 mr-2"></i> 住宿清單</h3>
                 <ul class="space-y-4">
@@ -327,6 +327,7 @@
                     </li>
                 </ul>
             </div>
+            <!-- 必買清單 -->
             <div class="bg-white rounded-3xl p-6 card-shadow">
                 <h3 class="font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2"><i class="fa-solid fa-thumbs-up text-red-400 mr-2"></i> 必買推薦</h3>
                 <div v-for="region in mustBuyList" :key="region.area" class="mb-4 last:mb-0">
@@ -357,7 +358,7 @@
             </div>
         </div>
 
-        <!-- Tab 4: 花費 (更新分帳儀表板) -->
+        <!-- Tab 4: 花費 (分帳儀表板) -->
         <div v-if="currentTab === 'expenses'" class="animate-fade-in pb-20">
             <!-- 總支出卡片 -->
             <div class="bg-gradient-to-r from-deep-sea-blue to-cyan-600 text-white rounded-3xl p-6 mb-6 relative overflow-hidden shadow-lg">
@@ -375,19 +376,16 @@
 
             <!-- 分帳結算儀表板 -->
             <div class="bg-white rounded-3xl p-5 mb-6 shadow-sm border border-slate-100">
-                <h3 class="font-bold text-slate-800 mb-4 flex items-center text-sm"><i class="fa-solid fa-scale-balanced text-warm-orange mr-2"></i> 分帳結算儀表板</h3>
-                
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center text-sm"><i class="fa-solid fa-scale-balanced text-warm-orange mr-2"></i> 分帳結算 (負為應付)</h3>
                 <div class="space-y-3">
                     <div v-for="member in balanceSheet" :key="member.name" class="flex items-center justify-between p-2 rounded-lg bg-slate-50">
                         <div class="flex items-center">
-                            <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs mr-3">
-                                {{ member.name.charAt(0) }}
-                            </div>
+                            <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs mr-3">{{ member.name.charAt(0) }}</div>
                             <span class="text-sm font-bold text-slate-700">{{ member.name }}</span>
                         </div>
                         <div class="text-right">
                             <span class="block font-bold text-sm" :class="member.balance >= 0 ? 'text-balance-pos' : 'text-balance-neg'">
-                                {{ member.balance >= 0 ? '應收' : '應付' }} ¥{{ formatNumber(Math.abs(member.balance)) }}
+                                {{ member.balance >= 0 ? '+' : '' }}¥{{ formatNumber(member.balance) }}
                             </span>
                             <span class="text-[10px] text-slate-400 block">墊付 ¥{{ formatNumber(member.paid) }}</span>
                         </div>
@@ -408,8 +406,8 @@
                             <div>
                                 <p class="font-bold text-slate-700 text-sm">{{ exp.name }}</p>
                                 <p class="text-[10px] text-slate-400 mt-0.5">
-                                    <span class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 mr-1">{{ exp.payer }} 先墊</span>
-                                    <span v-if="exp.involved.length < members.length" class="text-warm-orange">({{ exp.involved.length }}人分)</span>
+                                    <span class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 mr-1">{{ exp.payer }}</span>
+                                    <span v-if="exp.involved.length < members.length" class="text-warm-orange">({{ exp.involved.length }}人)</span>
                                     <span v-else>全體</span>
                                 </p>
                             </div>
@@ -431,7 +429,7 @@
     </button>
 
     <!-- Modals -->
-    <!-- 1. 行程 Modal (保持原樣) -->
+    <!-- 1. 行程 Modal -->
     <div v-if="showItineraryModal" class="fixed inset-0 bg-deep-sea-blue/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <h3 class="font-bold text-lg mb-4 text-center text-slate-800">{{ isEditMode ? '編輯行程' : '新增行程' }}</h3>
@@ -476,12 +474,11 @@
         </div>
     </div>
 
-    <!-- 3. 新增花費 Modal (整合分帳) -->
+    <!-- 3. 新增花費 Modal (分帳功能) -->
     <div v-if="showExpenseModal" class="fixed inset-0 bg-deep-sea-blue/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl max-h-[95vh] overflow-y-auto">
             <h3 class="font-bold text-lg mb-4 text-center text-slate-800">記一筆</h3>
             
-            <!-- 基本資料 -->
             <div class="grid grid-cols-2 gap-3 mb-3">
                 <input v-model="newExpense.date" type="date" class="bg-slate-50 rounded-xl p-3 text-sm outline-none">
                 <select v-model="newExpense.category" class="bg-slate-50 rounded-xl p-3 text-sm outline-none">
@@ -498,30 +495,22 @@
                 <input v-model.number="newExpense.amount" type="number" placeholder="金額" class="w-full bg-slate-50 rounded-xl p-4 pl-8 text-sm focus:outline-none font-bold text-lg">
             </div>
 
-            <!-- 分帳設定 -->
             <div class="mb-6 border-t border-slate-100 pt-4">
-                <label class="block text-xs font-bold text-slate-500 mb-2">付款人 (誰先墊錢?)</label>
+                <label class="block text-xs font-bold text-slate-500 mb-2">付款人 (誰先墊?)</label>
                 <select v-model="newExpense.payer" class="w-full bg-blue-50 text-deep-sea-blue font-bold rounded-xl p-3 text-sm outline-none mb-4">
                     <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
                 </select>
 
                 <div class="flex justify-between items-center mb-2">
-                    <label class="block text-xs font-bold text-slate-500">分攤對象 (誰有份?)</label>
-                    <button @click="toggleSelectAll" class="text-xs text-deep-sea-blue font-bold">
-                        {{ newExpense.involved.length === members.length ? '全取消' : '全選' }}
-                    </button>
+                    <label class="block text-xs font-bold text-slate-500">分攤對象</label>
+                    <button @click="toggleSelectAll" class="text-xs text-deep-sea-blue font-bold">{{ newExpense.involved.length === members.length ? '全取消' : '全選' }}</button>
                 </div>
-                
                 <div class="grid grid-cols-2 gap-2 mb-3">
                     <label v-for="m in members" :key="m" class="cursor-pointer relative">
                         <input type="checkbox" :value="m" v-model="newExpense.involved" class="member-checkbox hidden">
-                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center text-xs text-slate-600 transition-colors hover:bg-slate-100">
-                            {{ m }}
-                        </div>
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center text-xs text-slate-600 transition-colors hover:bg-slate-100">{{ m }}</div>
                     </label>
                 </div>
-                
-                <!-- 試算結果 -->
                 <div v-if="newExpense.amount > 0 && newExpense.involved.length > 0" class="bg-orange-50 rounded-xl p-3 flex justify-between items-center">
                     <span class="text-xs text-orange-800">每人應付</span>
                     <span class="font-bold text-orange-600">¥ {{ formatNumber(Math.ceil(newExpense.amount / newExpense.involved.length)) }}</span>
@@ -544,8 +533,6 @@
         setup() {
             const currentTab = ref('itinerary');
             const selectedDateIndex = ref(0);
-            
-            // 匯率
             const exchangeRate = ref(0.22);
             const currencyInput = ref(50000);
             const currencyResult = ref(0);
@@ -554,13 +541,11 @@
             // 成員設定
             const members = ref(['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟']);
 
-            // Modals
             const showItineraryModal = ref(false);
             const showShoppingModal = ref(false);
             const showExpenseModal = ref(false);
             const isEditMode = ref(false);
 
-            // 類別顏色
             const CATEGORY_MAP = {
                 sightseeing: { color: 'bg-green-500', icon: 'fa-solid fa-camera' },
                 food: { color: 'bg-red-400', icon: 'fa-solid fa-utensils' },
@@ -572,13 +557,12 @@
                 stay: { color: 'bg-purple-500', icon: 'fa-solid fa-hotel' }
             };
 
-            // 資料定義 (Dates, Hotels...)
             const dates = ref([
                 { date: '3/06', weekday: '五', area: '星野', temp: '-2°C', weather: 'snow', transport: '包車' },
-                { date: '3/07', weekday: '六', area: '定山溪', temp: '0°C', weather: 'cloudy', transport: '包車' },
-                { date: '3/08', weekday: '日', area: '函館', temp: '2°C', weather: 'sunny', transport: '包車' },
+                { date: '3/07', weekday: '六', area: '定山溪/札幌', temp: '0°C', weather: 'cloudy', transport: '包車' },
+                { date: '3/08', weekday: '日', area: '登別/函館', temp: '2°C', weather: 'sunny', transport: '包車' },
                 { date: '3/09', weekday: '一', area: '函館', temp: '3°C', weather: 'sunny', transport: '市電' },
-                { date: '3/10', weekday: '二', area: '札幌', temp: '1°C', weather: 'cloudy', transport: 'JR' },
+                { date: '3/10', weekday: '二', area: '函館/札幌', temp: '1°C', weather: 'cloudy', transport: 'JR' },
                 { date: '3/11', weekday: '三', area: '小樽', temp: '-1°C', weather: 'snow', transport: 'JR' },
                 { date: '3/12', weekday: '四', area: '旭山', temp: '-5°C', weather: 'snow', transport: '巴士' },
                 { date: '3/13', weekday: '五', area: '札幌', temp: '1°C', weather: 'cloudy', transport: '地鐵' },
@@ -586,88 +570,110 @@
             ]);
 
             const hotels = ref([
-                { name: '星野リゾート トマム', date: '3/06', address: '占冠村中トマム' },
-                { name: 'Vessel Inn 中島公園', date: '3/07', address: '札幌市中央區' },
-                { name: 'OMO5 函館', date: '3/08', address: '函館市若松町' }
+                { name: '星野リゾート トマム The Tower', date: '3/06', address: '北海道勇払郡占冠村中トマム' },
+                { name: 'Vessel Inn 札幌中島公園', date: '3/07', address: '札幌市中央區南九條西4-1-2' },
+                { name: 'OMO5 函館 by 星野集團', date: '3/08', address: '函館市若松町24番1' },
+                { name: 'Royal Park Canvas 札幌大通公園', date: '3/10', address: '札幌市中央区大通西1-12' }
             ]);
 
-            // 行程資料 (簡化範例)
             const itineraryData = ref([
-                [{ id: 1, category: 'flight', startTime: '02:50', name: '桃機出發 (VZ570)', note: '07:30 抵達新千歲', isNoteExpanded: false }],
-                [{ id: 2, category: 'food', startTime: '08:00', name: '飯店早餐', note: '', isNoteExpanded: false }],
-                [{ id: 3, category: 'sightseeing', startTime: '10:30', name: '登別地獄谷', note: '', isNoteExpanded: false }],
-                [{ id: 4, category: 'food', startTime: '07:00', name: '函館朝市', note: '', isNoteExpanded: false }],
-                [{ id: 5, category: 'transport', startTime: '09:00', name: 'JR 特急北斗號', note: '', isNoteExpanded: false }],
-                [{ id: 6, category: 'sightseeing', startTime: '11:00', name: '小樽運河', note: '', isNoteExpanded: false }],
-                [{ id: 7, category: 'sightseeing', startTime: '10:30', name: '旭山動物園', note: '', isNoteExpanded: false }],
-                [{ id: 8, category: 'shopping', startTime: 'All Day', name: '札幌市區自由行', note: '', isNoteExpanded: false }],
-                [{ id: 9, category: 'flight', startTime: '14:40', name: 'CI131 起飛', note: '', isNoteExpanded: false }]
+                [
+                    { id: 1, category: 'flight', startTime: '02:50', name: '桃機出發 (VZ570)', note: '07:30 抵達新千歲', isNoteExpanded: false },
+                    { id: 2, category: 'transport', startTime: '08:45', name: '包車前往星野', note: '新千歲出發', isNoteExpanded: false },
+                    { id: 3, category: 'sightseeing', startTime: '09:00', name: '霧冰平台', note: '搭乘雲海纜車 ¥2500，KUMO Cafe', isNoteExpanded: false },
+                    { id: 4, category: 'sightseeing', startTime: '13:00', name: 'Snow Kart 雪上卡丁車', note: '費用 ¥3500 (需12/1預約)', isNoteExpanded: false },
+                    { id: 5, category: 'accommodation', startTime: '15:00', name: 'Check-in The Tower', note: '', isNoteExpanded: false },
+                    { id: 6, category: 'food', startTime: '17:00', name: 'Forest Restaurant', note: '自助晚餐 ¥5500', isNoteExpanded: false },
+                    { id: 7, category: 'sightseeing', startTime: '19:00', name: '愛絲冰城', note: '入場 ¥600 (最後入場21:30)', isNoteExpanded: false }
+                ],
+                [
+                    { id: 8, category: 'food', startTime: '08:00', name: '飯店早餐', note: '', isNoteExpanded: false },
+                    { id: 9, category: 'transport', startTime: '08:45', name: '包車出發', note: '', isNoteExpanded: false },
+                    { id: 10, category: 'sightseeing', startTime: '11:30', name: '定山溪泛舟', note: '費用 ¥9500 (12:00開始)', address: '札幌市南区定山渓温泉西４丁目371-4', isNoteExpanded: false },
+                    { id: 11, category: 'accommodation', startTime: '15:00', name: 'Check-in Vessel Inn', note: '札幌中島公園', isNoteExpanded: false },
+                    { id: 12, category: 'food', startTime: '18:00', name: '成吉思汗烤羊肉', note: '札幌必吃', isNoteExpanded: false }
+                ],
+                [
+                     { id: 13, category: 'transport', startTime: '08:30', name: '包車出發', note: '札幌 > 登別 > 洞爺湖 > 函館', isNoteExpanded: false },
+                     { id: 14, category: 'sightseeing', startTime: '10:30', name: '登別地獄谷', note: '', isNoteExpanded: false },
+                     { id: 15, category: 'sightseeing', startTime: '13:00', name: '洞爺湖', note: '昭和新山、湖畔展望台', isNoteExpanded: false },
+                     { id: 16, category: 'accommodation', startTime: '17:00', name: 'Check-in OMO5 函館', note: '', isNoteExpanded: false },
+                     { id: 161, category: 'food', startTime: '19:00', name: '晚餐', note: '函館市區或飯店周邊', isNoteExpanded: false }
+                ],
+                [
+                    { id: 17, category: 'food', startTime: '07:00', name: '函館朝市', note: '釣烏賊、海鮮丼', isNoteExpanded: false },
+                    { id: 18, category: 'sightseeing', startTime: '10:00', name: '五稜郭公園＋塔', note: '俯瞰星形堡壘', isNoteExpanded: false },
+                    { id: 19, category: 'shopping', startTime: '13:00', name: '金森紅磚倉庫', note: '購物、下午茶', isNoteExpanded: false },
+                    { id: 20, category: 'sightseeing', startTime: '15:00', name: '元町教會群、八幡坂', note: '坡道海景', isNoteExpanded: false },
+                    { id: 21, category: 'sightseeing', startTime: '18:00', name: '函館山夜景', note: '搭纜車 (飯店免費接駁)', isNoteExpanded: false },
+                    { id: 211, category: 'food', startTime: '20:00', name: '晚餐', note: '小丑漢堡或鹽味拉麵', isNoteExpanded: false }
+                ],
+                [
+                    { id: 22, category: 'transport', startTime: '09:00', name: 'JR 特急北斗號', note: '往札幌 (約4hr, ¥9440)', isNoteExpanded: false },
+                    { id: 23, category: 'accommodation', startTime: '15:00', name: 'Check-in Royal Park', note: '大通公園旁', isNoteExpanded: false },
+                    { id: 24, category: 'sightseeing', startTime: 'Evening', name: '大通公園散策', note: '', isNoteExpanded: false }
+                ],
+                [
+                    { id: 25, category: 'transport', startTime: '10:00', name: 'JR 快速 Airport', note: '往小樽 (約35分)', isNoteExpanded: false },
+                    { id: 251, category: 'food', startTime: '11:00', name: '三角市場', note: '早午餐 (帝王蟹/海鮮丼)', isNoteExpanded: false },
+                    { id: 26, category: 'sightseeing', startTime: '12:00', name: '小樽運河', note: '淺草橋拍照、運河倉庫', isNoteExpanded: false },
+                    { id: 27, category: 'shopping', startTime: '13:00', name: '堺町通商店街', note: '六花亭、北菓樓、LeTAO、北一哨子館', isNoteExpanded: false },
+                    { id: 271, category: 'food', startTime: '18:00', name: '晚餐', note: '若雞時代或壽司通', isNoteExpanded: false }
+                ],
+                [
+                    { id: 28, category: 'transport', startTime: '07:40', name: '集合：大通站31號門', note: '觀光巴士', isNoteExpanded: false },
+                    { id: 29, category: 'sightseeing', startTime: '10:30', name: '旭山動物園', note: '企鵝散步 (視融雪狀況)', isNoteExpanded: false },
+                    { id: 30, category: 'transport', startTime: '20:00', name: '返回札幌', note: '', isNoteExpanded: false },
+                    { id: 301, category: 'food', startTime: '20:30', name: '晚餐', note: '湯咖哩 (Suage+/GARAKU) 或拉麵', isNoteExpanded: false }
+                ],
+                [
+                    { id: 31, category: 'sightseeing', startTime: '09:00', name: '北海道神宮', note: '參拜、六花亭判官餅', isNoteExpanded: false },
+                    { id: 311, category: 'food', startTime: '12:00', name: '二條市場', note: '海膽、哈密瓜', isNoteExpanded: false },
+                    { id: 312, category: 'shopping', startTime: '14:00', name: '分組自由行', note: '騎士組: Ricoland 白石店 / 購物組: 狸小路', isNoteExpanded: false },
+                    { id: 313, category: 'food', startTime: '19:00', name: '歡送會晚餐', note: '難陀蟹吃到飽或頂級和牛', isNoteExpanded: false }
+                ],
+                [
+                    { id: 32, category: 'transport', startTime: '11:00', name: '前往新千歲機場', note: '', isNoteExpanded: false },
+                    { id: 33, category: 'shopping', startTime: '12:00', name: '國內線航廈2F', note: '最後採買 (Royce, 白色戀人)', isNoteExpanded: false },
+                    { id: 34, category: 'flight', startTime: '14:40', name: 'CI131 起飛', note: '平安返國', isNoteExpanded: false }
+                ]
             ]);
 
-            // 必買與購物
             const mustBuyList = ref([
-                { area: '小樽', items: ['六花亭', '北菓樓'] },
-                { area: '札幌', items: ['白色戀人', '佐藤水產'] }
+                { area: '小樽', items: ['六花亭 奶油葡萄夾心', '北菓樓 妖精之森', 'LeTAO 雙層乳酪', '音樂盒'] },
+                { area: '札幌', items: ['札幌農學校 餅乾', '白色戀人', '佐藤水產', 'Kinotoya 起司塔'] },
+                { area: '函館', items: ['Snaffle’s 起司蛋糕', '烏賊飯'] }
             ]);
+
             const shoppingList = ref([
-                { name: '六花亭', qty: 5, checked: false, image: null }
+                { name: '六花亭', qty: 5, checked: false, image: null },
+                { name: '白色戀人', qty: 2, checked: false, image: null }
             ]);
-
-            // **花費資料 (包含分帳)**
             const expenses = ref([
-                { name: '機票代墊', amount: 175000, category: 'flight', date: '2026-01-15', payer: '徐續簡進', involved: ['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟'] }
+                { name: '機票代墊', amount: 175000, category: 'flight', date: '2026-01-15', payment: 'card', payer: '徐續簡進', involved: ['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟'] }
             ]);
 
-            // 新增資料狀態
             const newItinerary = ref({ id: null, category: 'sightseeing', name: '', startTime: '', address: '', price: '', note: '' });
             const newShoppingItem = ref({ name: '', qty: 1, image: null });
-            
-            // 新增花費 (初始值)
-            const newExpense = ref({ 
-                name: '', amount: null, category: 'food', date: '2026-03-06', 
-                payer: members.value[0], // 預設第一位
-                involved: [...members.value] // 預設全選
-            });
+            const newExpense = ref({ name: '', amount: null, category: 'food', date: '2026-03-06', payment: 'cash', payer: members.value[0], involved: [...members.value] });
 
-            // Computed
-            const currentItinerary = computed(() => {
-                if (!itineraryData.value[selectedDateIndex.value]) itineraryData.value[selectedDateIndex.value] = [];
-                return itineraryData.value[selectedDateIndex.value];
-            });
+            const currentItinerary = computed(() => itineraryData.value[selectedDateIndex.value] || []);
             const totalExpensesJPY = computed(() => expenses.value.reduce((sum, e) => sum + (e.amount || 0), 0));
             const totalExpensesTWD = computed(() => Math.round(totalExpensesJPY.value * exchangeRate.value));
 
-            // **結算邏輯 (Balance Sheet)**
             const balanceSheet = computed(() => {
                 const balances = {};
                 members.value.forEach(m => balances[m] = { name: m, paid: 0, share: 0, balance: 0 });
-
                 expenses.value.forEach(exp => {
-                    // 誰墊的錢
-                    if (balances[exp.payer]) {
-                        balances[exp.payer].paid += exp.amount;
-                    }
-                    
-                    // 誰要分攤
-                    const involvedCount = exp.involved.length;
-                    if (involvedCount > 0) {
-                        const amountPerPerson = exp.amount / involvedCount;
-                        exp.involved.forEach(person => {
-                            if (balances[person]) {
-                                balances[person].share += amountPerPerson;
-                            }
-                        });
+                    if (balances[exp.payer]) balances[exp.payer].paid += exp.amount;
+                    if (exp.involved.length > 0) {
+                        const amountPerPerson = exp.amount / exp.involved.length;
+                        exp.involved.forEach(p => { if(balances[p]) balances[p].share += amountPerPerson; });
                     }
                 });
-
-                // 計算淨額 (Paid - Share)
-                return Object.values(balances).map(m => {
-                    m.balance = Math.round(m.paid - m.share); // 四捨五入
-                    return m;
-                });
+                return Object.values(balances).map(m => { m.balance = Math.round(m.paid - m.share); return m; });
             });
 
-            // Methods
             const formatNumber = (num) => num ? num.toLocaleString() : '0';
             const getCategoryColor = (cat) => CATEGORY_MAP[cat]?.color || 'bg-gray-400';
             const getCategoryIcon = (cat) => CATEGORY_MAP[cat]?.icon || 'fa-solid fa-circle';
@@ -677,23 +683,11 @@
             const handleAddClick = () => {
                 if (currentTab.value === 'itinerary') { isEditMode.value = false; newItinerary.value = { category: 'sightseeing' }; showItineraryModal.value = true; }
                 else if (currentTab.value === 'shopping') { newShoppingItem.value = { name: '', qty: 1 }; showShoppingModal.value = true; }
-                else if (currentTab.value === 'expenses') { 
-                    newExpense.value = { 
-                        category: 'food', date: '2026-03-06', 
-                        payer: members.value[0], 
-                        involved: [...members.value], // 重置為全選
-                        amount: null, name: ''
-                    }; 
-                    showExpenseModal.value = true; 
-                }
+                else if (currentTab.value === 'expenses') { newExpense.value = { category: 'food', payment: 'cash', date: '2026-03-06', payer: members.value[0], involved: [...members.value], amount: null, name: '' }; showExpenseModal.value = true; }
             };
 
             const toggleSelectAll = () => {
-                if (newExpense.value.involved.length === members.value.length) {
-                    newExpense.value.involved = [];
-                } else {
-                    newExpense.value.involved = [...members.value];
-                }
+                newExpense.value.involved = newExpense.value.involved.length === members.value.length ? [] : [...members.value];
             };
 
             const saveItineraryItem = () => {
@@ -703,6 +697,7 @@
                     const idx = currentItinerary.value.findIndex(i => i.id === newItem.id);
                     if(idx !== -1) currentItinerary.value[idx] = newItem;
                 } else {
+                    if(!itineraryData.value[selectedDateIndex.value]) itineraryData.value[selectedDateIndex.value] = [];
                     itineraryData.value[selectedDateIndex.value].push(newItem);
                     itineraryData.value[selectedDateIndex.value].sort((a,b) => (a.startTime > b.startTime) ? 1 : -1);
                 }
@@ -720,11 +715,7 @@
 
             const addExpense = () => {
                 if(newExpense.value.name && newExpense.value.amount) {
-                    // 深拷貝 involved 陣列，避免傳參考問題
-                    expenses.value.push({ 
-                        ...newExpense.value, 
-                        involved: [...newExpense.value.involved] 
-                    });
+                    expenses.value.push({ ...newExpense.value, involved: [...newExpense.value.involved] });
                 }
                 showExpenseModal.value = false;
             };
