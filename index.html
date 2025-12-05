@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Hokkaido Trip 2026</title>
     
-    <!-- 設定瀏覽器標籤頁 (Tab) 的小圖示 -->
-    <link rel="icon" type="image/jpeg" href="./image_f6ac4e.jpg">
+    <!-- Tab Icon -->
+    <link rel="icon" type="image/jpeg" href="./image_ec3041.jpg">
     
     <!-- Vue.js 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
@@ -46,6 +46,7 @@
             background-color: #F0F2F5;
             -webkit-tap-highlight-color: transparent;
         }
+        /* 隱藏滾動條但保持功能 */
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -53,18 +54,17 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
-        .fade-enter-active, .fade-leave-active {
-            transition: opacity 0.3s ease;
+        /* 頁面切換淡入動畫 */
+        .fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
         }
-        .fade-enter-from, .fade-leave-to {
-            opacity: 0;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
+        /* Banner 遮罩：漸層讓白色文字更清楚 */
         .banner-overlay {
-            background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 60%, rgba(0,0,0,0.5) 100%);
-        }
-        /* 按鈕點擊效果 */
-        .btn-active {
-            transform: scale(0.95);
+            background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.6) 100%);
         }
     </style>
 </head>
@@ -73,24 +73,29 @@
     <div id="app" class="max-w-md mx-auto bg-white min-h-screen shadow-2xl relative overflow-hidden flex flex-col">
         
         <!-- 頁首 Banner -->
-        <header class="relative w-full shrink-0 h-[250px]">
+        <header class="relative w-full shrink-0 h-[260px]">
             <div class="absolute inset-0 w-full h-full bg-gray-200 overflow-hidden">
-                <img src="./banner.jpg" 
+                <!-- 
+                   使用 image_ec3041.jpg (合照插畫)
+                   onerror: 若找不到圖片檔，會顯示 Unsplash 風景圖作為備案
+                -->
+                <img src="./banner.jpg"
                      onerror="this.src='https://images.unsplash.com/photo-1548578709-32269a838573?q=80&w=1920&auto=format&fit=crop'"
                      alt="Hokkaido Header" 
                      class="w-full h-full object-cover object-center animate-fade-in">
+                
                 <div class="banner-overlay absolute inset-0 flex flex-col justify-end p-6">
-                    <h1 class="text-3xl font-bold tracking-widest text-white drop-shadow-md">HOKKAIDO</h1>
-                    <p class="text-sm font-light tracking-wider mt-1 text-white/90 drop-shadow-md">2026.03.06 - 03.14</p>
+                    <h1 class="text-3xl font-bold tracking-widest text-white drop-shadow-lg">HOKKAIDO</h1>
+                    <p class="text-sm font-light tracking-wider mt-1 text-white/95 drop-shadow-md">2026.03.06 - 03.14</p>
                 </div>
             </div>
         </header>
 
         <!-- 主要內容區 -->
-        <main class="flex-1 overflow-y-auto no-scrollbar pb-24 bg-gray-50 relative -mt-4 rounded-t-3xl z-20 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+        <main class="flex-1 overflow-y-auto no-scrollbar pb-24 bg-gray-50 relative -mt-6 rounded-t-3xl z-20 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
             
-            <!-- Tab 1: 每日行程表 (Landmark Icon) -->
-            <div v-if="currentTab === 'itinerary'" class="p-6 fade-in">
+            <!-- Tab 1: 行程 (Itinerary) -->
+            <div v-if="currentTab === 'itinerary'" class="p-6 fade-in pt-8">
                 <h2 class="text-xl font-bold text-jp-gray-dark mb-4 flex items-center">
                     <i class="fa-solid fa-map-location-dot mr-2 text-jp-sage"></i> 行程總覽
                 </h2>
@@ -123,12 +128,14 @@
                 <!-- 每日行程列表 -->
                 <div class="space-y-8">
                     <div v-for="(day, index) in itinerary" :key="index" class="relative pl-4 border-l-2 border-jp-gray-light/50">
+                        <!-- 日期標記 -->
                         <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-white border-4 border-jp-sage"></div>
                         <div class="mb-4 pt-0.5">
                             <span class="text-xs font-bold text-jp-sage bg-ice-blue px-3 py-1 rounded-full shadow-sm">{{ day.date }}</span>
                             <h3 class="text-lg font-bold mt-2 text-gray-800 tracking-wide">{{ day.title }}</h3>
                         </div>
 
+                        <!-- 單日細項 -->
                         <div class="space-y-3">
                             <div v-for="(item, i_idx) in day.items" :key="i_idx" 
                                  class="bg-white p-4 rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-md transition-all duration-200 relative group">
@@ -139,16 +146,28 @@
                                             <span class="font-bold text-gray-700 text-base">{{ item.name }}</span>
                                             <span class="text-xs font-mono text-jp-sage bg-gray-50 px-1.5 py-0.5 rounded ml-2">{{ item.time }}</span>
                                         </div>
+                                        
+                                        <!-- 可編輯備註區 -->
                                         <div class="text-sm text-gray-500 mt-2">
                                             <div v-if="!item.isEditing" @click="item.isEditing = true" class="cursor-pointer min-h-[20px] group/edit">
+                                                <!-- 地址顯示 -->
                                                 <p v-if="item.address" class="text-xs text-jp-gray-mid mb-1 flex items-center">
                                                     <i class="fa-solid fa-location-dot mr-1.5 text-red-300"></i>{{ item.address }}
                                                 </p>
+                                                <!-- 備註顯示 -->
                                                 <p v-if="item.note" class="whitespace-pre-line text-xs text-gray-600 bg-gray-50 p-2 rounded border border-transparent group-hover/edit:border-jp-sage/30 transition-colors">{{ item.note }}</p>
                                                 <p v-else class="italic text-xs text-gray-300 pt-1">點擊新增備註...</p>
                                             </div>
-                                            <textarea v-else v-model="item.note" @blur="item.isEditing = false" class="w-full text-sm border border-jp-sage rounded p-2 focus:outline-none focus:ring-2 focus:ring-jp-sage/20 bg-white" rows="3"></textarea>
+                                            <!-- 編輯模式 -->
+                                            <textarea v-else 
+                                                v-model="item.note" 
+                                                @blur="item.isEditing = false"
+                                                class="w-full text-sm border border-jp-sage rounded p-2 focus:outline-none focus:ring-2 focus:ring-jp-sage/20 bg-white"
+                                                rows="3"
+                                                placeholder="輸入筆記或修改細節..."></textarea>
                                         </div>
+
+                                        <!-- 功能按鈕 -->
                                         <div class="flex gap-2 mt-3">
                                             <a v-if="item.address" :href="'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(item.address)" target="_blank" class="text-[10px] font-bold bg-jp-sage/10 text-jp-sage px-3 py-1.5 rounded-full hover:bg-jp-sage hover:text-white transition-colors flex items-center"><i class="fa-solid fa-map-location-dot mr-1"></i> 導航</a>
                                             <a v-if="item.link" :href="item.link" target="_blank" class="text-[10px] font-bold bg-ice-blue text-blue-500 px-3 py-1.5 rounded-full hover:bg-blue-100 transition-colors flex items-center"><i class="fa-solid fa-link mr-1"></i> 資訊</a>
@@ -161,65 +180,41 @@
                 </div>
             </div>
 
-            <!-- Tab 2: 資訊 (Info Icon) - 包含必買推薦、天氣、翻譯 -->
-            <div v-if="currentTab === 'info'" class="p-6 fade-in">
+            <!-- Tab 2: 必買推薦 (Must Buy) -->
+            <div v-if="currentTab === 'mustbuy'" class="p-6 fade-in pt-8">
                 <h2 class="text-xl font-bold text-jp-gray-dark mb-4 flex items-center">
-                    <i class="fa-solid fa-circle-info mr-2 text-jp-sage"></i> 旅遊資訊 & 必買
+                    <i class="fa-solid fa-thumbs-up mr-2 text-jp-sage"></i> 必買推薦
                 </h2>
-
-                <!-- 工具連結 (天氣 & 翻譯) -->
-                <div class="grid grid-cols-2 gap-3 mb-6">
-                     <a href="https://weathernews.jp/onebox/tenki/hokkaido/" target="_blank"
-                       class="bg-gradient-to-br from-ice-blue to-white p-4 rounded-2xl shadow-sm flex flex-col justify-between border border-blue-100 hover:shadow-md transition-shadow h-24">
-                        <div class="text-xs text-gray-500">Weather News</div>
-                        <div class="flex justify-between items-end">
-                            <div class="font-bold text-gray-700">北海道天氣</div>
-                            <i class="fa-solid fa-cloud-sun-rain text-2xl text-ice-accent"></i>
-                        </div>
-                    </a>
-                    <a href="https://translate.google.com/?sl=ja&tl=zh-TW&op=translate" target="_blank"
-                       class="bg-white p-4 rounded-2xl shadow-sm flex flex-col justify-between border border-gray-100 hover:shadow-md transition-shadow h-24">
-                        <div class="text-xs text-gray-500">Google Translate</div>
-                        <div class="flex justify-between items-end">
-                            <div class="font-bold text-gray-700">翻譯</div>
-                            <i class="fa-solid fa-language text-2xl text-blue-400"></i>
-                        </div>
-                    </a>
-                </div>
                 
-                <!-- 必買清單 -->
-                <div class="space-y-4">
-                    <h3 class="text-sm font-bold text-gray-400 pl-1">必買推薦清單</h3>
-                    <div v-for="(region, rIdx) in mustBuyList" :key="rIdx" class="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-                        <div class="bg-jp-beige/30 px-4 py-2 flex justify-between items-center border-b border-gray-100">
-                            <span class="font-bold text-gray-700 flex items-center">
-                                <span class="w-1.5 h-1.5 rounded-full bg-jp-sage mr-2"></span>
-                                {{ region.area }}
-                            </span>
+                <div class="space-y-6">
+                    <div v-for="(region, rIdx) in mustBuyList" :key="rIdx">
+                        <div class="flex items-center mb-3">
+                            <span class="w-1.5 h-6 bg-jp-sage rounded-r-md mr-2"></span>
+                            <h3 class="font-bold text-gray-700 text-lg">{{ region.area }}</h3>
                         </div>
-                        <div class="p-4 grid grid-cols-2 gap-3">
-                            <div v-for="(item, iIdx) in region.items" :key="iIdx" class="text-center group">
-                                <div class="aspect-[4/3] bg-gray-50 rounded-lg mb-2 flex items-center justify-center text-gray-300 text-2xl relative overflow-hidden transition-all group-hover:bg-ice-blue/30">
-                                    <i class="fa-solid fa-gift group-hover:scale-110 transition-transform duration-300 text-jp-gray-light group-hover:text-ice-accent"></i>
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div v-for="(item, iIdx) in region.items" :key="iIdx" class="bg-white p-3 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center text-center group hover:shadow-md transition-all">
+                                <div class="w-10 h-10 rounded-full bg-ice-blue/30 flex items-center justify-center text-ice-accent mb-2 group-hover:scale-110 transition-transform">
+                                    <i class="fa-solid fa-gift"></i>
                                 </div>
-                                <p class="text-xs font-medium text-gray-600 group-hover:text-gray-800 transition-colors">{{ item }}</p>
+                                <span class="text-sm font-medium text-gray-600">{{ item }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tab 3: 購物清單 (Basket Icon) -->
-            <div v-if="currentTab === 'shopping'" class="p-6 fade-in">
+            <!-- Tab 3: 購物清單 (Shopping) -->
+            <div v-if="currentTab === 'shopping'" class="p-6 fade-in pt-8">
                 <h2 class="text-xl font-bold text-jp-gray-dark mb-4 flex items-center">
-                    <i class="fa-solid fa-basket-shopping mr-2 text-jp-sage"></i> 購物清單
+                    <i class="fa-solid fa-basket-shopping mr-2 text-jp-sage"></i> 我的購物清單
                 </h2>
 
                 <!-- 新增商品 -->
                 <div class="bg-white p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.05)] mb-6 sticky top-0 z-20">
                     <div class="flex gap-2 mb-3">
                         <div class="flex-1 bg-gray-50 rounded-xl px-3 py-2 flex items-center border border-transparent focus-within:border-jp-sage focus-within:bg-white transition-all">
-                            <i class="fa-solid fa-pen text-gray-300 mr-2 text-xs"></i>
                             <input v-model="newShopItem.name" type="text" placeholder="商品名稱..." class="bg-transparent w-full text-sm outline-none">
                         </div>
                         <div class="w-20 bg-gray-50 rounded-xl px-3 py-2 flex items-center border border-transparent focus-within:border-jp-sage focus-within:bg-white transition-all">
@@ -228,17 +223,17 @@
                     </div>
                     <input v-model="newShopItem.note" type="text" placeholder="備註 (ex: 要藍色的)" class="w-full bg-gray-50 rounded-xl px-3 py-2 text-xs outline-none focus:bg-white focus:ring-1 focus:ring-jp-sage mb-3">
                     <button @click="addShopItem" class="w-full bg-jp-sage text-white py-3 rounded-xl text-sm font-bold shadow-md hover:shadow-lg active:scale-[0.98] transition-all flex items-center justify-center">
-                        <i class="fa-solid fa-plus mr-2"></i> 新增至清單
+                        <i class="fa-solid fa-plus mr-2"></i> 加入清單
                     </button>
                 </div>
 
-                <!-- 清單 -->
+                <!-- 清單列表 -->
                 <div class="space-y-2 pb-10">
                     <div v-if="shoppingList.length === 0" class="flex flex-col items-center justify-center py-12 text-gray-300">
                         <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-3">
                             <i class="fa-solid fa-basket-shopping text-2xl"></i>
                         </div>
-                        <p class="text-sm">還沒有想買的東西嗎？</p>
+                        <p class="text-sm">目前沒有購物任務</p>
                     </div>
 
                     <div v-for="(item, index) in shoppingList" :key="index" 
@@ -265,23 +260,48 @@
                 </div>
             </div>
 
-            <!-- Tab 4: 花費 (Money Icon) - 包含匯率、分帳 -->
-            <div v-if="currentTab === 'expenses'" class="p-6 fade-in">
+            <!-- Tab 4: 工具 (Tools) -->
+            <div v-if="currentTab === 'tools'" class="p-6 fade-in pt-8">
                 <h2 class="text-xl font-bold text-jp-gray-dark mb-4 flex items-center">
-                    <i class="fa-solid fa-coins mr-2 text-jp-sage"></i> 花費與計算
+                    <i class="fa-solid fa-toolbox mr-2 text-jp-sage"></i> 實用工具
                 </h2>
+
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <!-- Google 翻譯 -->
+                    <a href="https://translate.google.com/?sl=ja&tl=zh-TW&op=translate" target="_blank"
+                       class="bg-white p-4 rounded-2xl shadow-sm flex flex-col justify-between h-28 border border-gray-100 hover:shadow-md transition-all group">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center text-lg mb-2 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-language"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-700 text-sm">Google 翻譯</div>
+                            <div class="text-[10px] text-gray-400">中日互譯</div>
+                        </div>
+                    </a>
+
+                    <!-- 天氣 Widget (連結) -->
+                    <a href="https://weathernews.jp/onebox/tenki/hokkaido/" target="_blank"
+                       class="bg-gradient-to-br from-ice-blue to-white p-4 rounded-2xl shadow-sm flex flex-col justify-between h-28 border border-blue-100 hover:shadow-md transition-all group">
+                        <div class="w-10 h-10 rounded-full bg-white text-ice-accent flex items-center justify-center text-lg mb-2 shadow-sm group-hover:rotate-12 transition-transform">
+                            <i class="fa-solid fa-cloud-sun-rain"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-gray-700 text-sm">北海道天氣</div>
+                            <div class="text-[10px] text-gray-400">WeatherNews</div>
+                        </div>
+                    </a>
+                </div>
 
                 <div class="space-y-4">
                     <!-- 匯率計算 -->
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
-                        <div class="absolute -right-4 -top-4 text-gray-50 text-6xl"><i class="fa-solid fa-money-bill-transfer"></i></div>
-                        <div class="text-[10px] font-bold text-jp-sage uppercase tracking-wider mb-4 relative z-10">即時換算 (0.22)</div>
-                        <div class="flex flex-col gap-3 relative z-10">
-                            <div class="flex items-center bg-gray-50 rounded-xl p-2 border border-transparent focus-within:border-jp-sage focus-within:bg-white transition-all">
+                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="text-[10px] font-bold text-jp-sage uppercase tracking-wider mb-3">匯率換算 (0.22)</div>
+                        <div class="flex flex-col gap-3">
+                            <div class="flex items-center bg-gray-50 rounded-xl p-2 border focus-within:border-jp-sage transition-colors">
                                 <span class="text-xs font-bold text-gray-400 w-10 text-center">JPY</span>
-                                <input type="number" v-model="calc.jpy" @input="calcTwd" class="w-full bg-transparent text-right font-mono text-lg outline-none text-gray-700 placeholder-gray-300" placeholder="輸入日幣">
+                                <input type="number" v-model="calc.jpy" @input="calcTwd" class="w-full bg-transparent text-right font-mono text-lg outline-none text-gray-700" placeholder="0">
                             </div>
-                            <div class="flex justify-center"><i class="fa-solid fa-arrow-down text-gray-300 text-xs"></i></div>
+                            <div class="flex justify-center -my-1"><i class="fa-solid fa-arrow-down text-gray-300 text-xs"></i></div>
                             <div class="flex items-center bg-ice-blue/20 rounded-xl p-2 border border-blue-100">
                                 <span class="text-xs font-bold text-gray-400 w-10 text-center">TWD</span>
                                 <div class="w-full text-right font-bold text-jp-sage font-mono text-lg">{{ calc.twd }}</div>
@@ -291,26 +311,22 @@
 
                     <!-- AA 分帳 -->
                     <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                        <h3 class="font-bold text-gray-600 mb-4 text-sm flex items-center">
-                            <span class="w-6 h-6 rounded-full bg-orange-100 text-orange-400 flex items-center justify-center mr-2 text-xs"><i class="fa-solid fa-user-group"></i></span>
-                            分帳計算機
+                        <h3 class="font-bold text-gray-600 mb-3 text-sm flex items-center">
+                            <i class="fa-solid fa-user-group mr-2 text-orange-400"></i> 分帳計算
                         </h3>
                         <div class="flex gap-2 mb-4">
                             <div class="flex-1 relative">
-                                <span class="absolute left-3 top-2.5 text-gray-400 text-xs">$</span>
-                                <input v-model="aa.amount" type="number" placeholder="總金額" class="w-full bg-gray-50 rounded-xl pl-6 pr-3 py-2 text-sm outline-none focus:ring-1 focus:ring-orange-200 focus:bg-white transition-colors">
+                                <span class="absolute left-3 top-2.5 text-gray-400 text-xs">¥</span>
+                                <input v-model="aa.amount" type="number" placeholder="總金額" class="w-full bg-gray-50 rounded-xl pl-6 pr-3 py-2 text-sm outline-none focus:ring-1 focus:ring-orange-200">
                             </div>
                             <div class="w-24 relative">
-                                <input v-model="aa.people" type="number" placeholder="人數" class="w-full bg-gray-50 rounded-xl px-3 py-2 text-sm text-center outline-none focus:ring-1 focus:ring-orange-200 focus:bg-white transition-colors">
+                                <input v-model="aa.people" type="number" placeholder="人數" class="w-full bg-gray-50 rounded-xl px-3 py-2 text-sm text-center outline-none focus:ring-1 focus:ring-orange-200">
                                 <span class="absolute right-3 top-2.5 text-gray-400 text-xs"><i class="fa-solid fa-user"></i></span>
                             </div>
                         </div>
-                        <div class="flex justify-between items-center bg-gradient-to-r from-orange-50 to-white p-4 rounded-xl border border-orange-100">
-                            <div class="flex flex-col">
-                                <span class="text-xs text-orange-800 font-medium">每人應付</span>
-                                <span class="text-[10px] text-gray-400">除不盡時無條件進位</span>
-                            </div>
-                            <span class="font-bold text-orange-600 font-mono text-2xl">{{ aaResult }} <span class="text-xs font-sans text-gray-400">円</span></span>
+                        <div class="flex justify-between items-center bg-orange-50 p-3 rounded-xl border border-orange-100">
+                            <span class="text-xs text-orange-800 font-medium">每人應付</span>
+                            <span class="font-bold text-orange-600 font-mono text-xl">{{ aaResult }} <span class="text-xs text-gray-400">円</span></span>
                         </div>
                     </div>
                 </div>
@@ -321,44 +337,44 @@
         <!-- 底部導航欄 -->
         <nav class="absolute bottom-0 w-full bg-white/90 backdrop-blur-lg border-t border-gray-100 pb-safe z-50 rounded-t-2xl shadow-[0_-5px_20px_rgba(0,0,0,0.03)]">
             <div class="grid grid-cols-4 h-20 pb-2">
-                <!-- 1. 每日行程表 (Landmark) -->
+                <!-- 1. 行程 -->
                 <button @click="currentTab = 'itinerary'" 
                         class="flex flex-col items-center justify-center w-full h-full transition-all duration-300 group"
                         :class="currentTab === 'itinerary' ? 'text-jp-sage' : 'text-gray-300 hover:text-gray-400'">
                     <div class="mb-1 p-1.5 rounded-xl transition-all duration-300" :class="currentTab === 'itinerary' ? 'bg-jp-sage/10 -translate-y-1' : ''">
                         <i class="fa-solid fa-map-location-dot text-xl"></i>
                     </div>
-                    <span class="text-[10px] font-medium tracking-wide">每日行程</span>
+                    <span class="text-[10px] font-medium tracking-wide">行程</span>
                 </button>
                 
-                <!-- 2. 資訊 (Info 'i') -->
-                <button @click="currentTab = 'info'" 
+                <!-- 2. 必買推薦 -->
+                <button @click="currentTab = 'mustbuy'" 
                         class="flex flex-col items-center justify-center w-full h-full transition-all duration-300 group"
-                        :class="currentTab === 'info' ? 'text-jp-sage' : 'text-gray-300 hover:text-gray-400'">
-                    <div class="mb-1 p-1.5 rounded-xl transition-all duration-300" :class="currentTab === 'info' ? 'bg-jp-sage/10 -translate-y-1' : ''">
-                        <i class="fa-solid fa-circle-info text-xl"></i>
+                        :class="currentTab === 'mustbuy' ? 'text-jp-sage' : 'text-gray-300 hover:text-gray-400'">
+                    <div class="mb-1 p-1.5 rounded-xl transition-all duration-300" :class="currentTab === 'mustbuy' ? 'bg-jp-sage/10 -translate-y-1' : ''">
+                        <i class="fa-solid fa-thumbs-up text-xl"></i>
                     </div>
-                    <span class="text-[10px] font-medium tracking-wide">資訊</span>
+                    <span class="text-[10px] font-medium tracking-wide">必買</span>
                 </button>
 
-                <!-- 3. 購物清單 (Shopping Basket) -->
+                <!-- 3. 購物清單 -->
                 <button @click="currentTab = 'shopping'" 
                         class="flex flex-col items-center justify-center w-full h-full transition-all duration-300 group"
                         :class="currentTab === 'shopping' ? 'text-jp-sage' : 'text-gray-300 hover:text-gray-400'">
                     <div class="mb-1 p-1.5 rounded-xl transition-all duration-300" :class="currentTab === 'shopping' ? 'bg-jp-sage/10 -translate-y-1' : ''">
                         <i class="fa-solid fa-basket-shopping text-xl"></i>
                     </div>
-                    <span class="text-[10px] font-medium tracking-wide">購物清單</span>
+                    <span class="text-[10px] font-medium tracking-wide">購物</span>
                 </button>
 
-                <!-- 4. 花費 (Money) -->
-                <button @click="currentTab = 'expenses'" 
+                <!-- 4. 工具 -->
+                <button @click="currentTab = 'tools'" 
                         class="flex flex-col items-center justify-center w-full h-full transition-all duration-300 group"
-                        :class="currentTab === 'expenses' ? 'text-jp-sage' : 'text-gray-300 hover:text-gray-400'">
-                    <div class="mb-1 p-1.5 rounded-xl transition-all duration-300" :class="currentTab === 'expenses' ? 'bg-jp-sage/10 -translate-y-1' : ''">
-                        <i class="fa-solid fa-coins text-xl"></i>
+                        :class="currentTab === 'tools' ? 'text-jp-sage' : 'text-gray-300 hover:text-gray-400'">
+                    <div class="mb-1 p-1.5 rounded-xl transition-all duration-300" :class="currentTab === 'tools' ? 'bg-jp-sage/10 -translate-y-1' : ''">
+                        <i class="fa-solid fa-toolbox text-xl"></i>
                     </div>
-                    <span class="text-[10px] font-medium tracking-wide">花費</span>
+                    <span class="text-[10px] font-medium tracking-wide">工具</span>
                 </button>
             </div>
         </nav>
@@ -372,7 +388,7 @@
             setup() {
                 const currentTab = ref('itinerary');
 
-                // 行程資料
+                // 行程資料 (含地址、圖示)
                 const itinerary = ref([
                     {
                         date: '3/06 (五)',
@@ -464,7 +480,7 @@
                     }
                 ]);
 
-                // 必買清單
+                // 必買推薦 (按區域分類)
                 const mustBuyList = ref([
                     { area: '小樽 Otaru', items: ['六花亭 萊姆葡萄夾心', '北果樓 妖精之森年輪蛋糕', 'LeTAO 雙層乳酪蛋糕', '音樂盒'] },
                     { area: '札幌 Sapporo', items: ['札幌農學校 牛奶餅乾', '白色戀人', '佐藤水產 鮭魚', 'Kinotoya 起司塔'] },
@@ -498,11 +514,11 @@
                     localStorage.setItem('hokkaido_shopping_list', JSON.stringify(shoppingList.value));
                 };
 
-                // 花費功能
+                // 工具：匯率 & 分帳
                 const calc = ref({ jpy: '', twd: 0 });
                 const calcTwd = () => {
                     if(calc.value.jpy) {
-                        calc.value.twd = (calc.value.jpy * 0.22).toFixed(0);
+                        calc.value.twd = (calc.value.jpy * 0.22).toFixed(0); // 匯率可在此調整
                     } else {
                         calc.value.twd = 0;
                     }
