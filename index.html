@@ -63,6 +63,8 @@
         .sync-status { position: absolute; top: 20px; right: 20px; z-index: 50; font-size: 0.7rem; padding: 4px 8px; border-radius: 12px; background: rgba(0,0,0,0.3); color: white; backdrop-filter: blur(4px); display: flex; align-items: center; gap: 5px; }
         .sync-dot { width: 8px; height: 8px; border-radius: 50%; background-color: #EF5350; }
         .sync-dot.online { background-color: #4CAF50; box-shadow: 0 0 5px #4CAF50; }
+        .sync-dot.busy { background-color: #FFC107; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
@@ -71,14 +73,14 @@
 
     <!-- Sync Status -->
     <div class="sync-status">
-        <div class="sync-dot" :class="{'online': isConnected}"></div>
+        <div class="sync-dot" :class="syncStatusClass"></div>
         <span>{{ statusMessage }}</span>
     </div>
 
     <!-- Header 區域 -->
     <div class="header-bg">
         <div class="header-image-container">
-            <img src="./banner.jpg"
+            <img src="./banner.jpg" 
                  onerror="this.src='https://images.unsplash.com/photo-1548578709-32269a838573?q=80&w=1920&auto=format&fit=crop'"
                  alt="北海道家族旅行">
             <div class="banner-text-overlay"></div>
@@ -170,7 +172,7 @@
                     <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
                     <div class="flex items-center bg-white/20 rounded-lg px-2 py-1">
                         <span class="text-xs text-cyan-200 mr-1">匯率:</span>
-                        <input type="number" v-model="exchangeRate" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
+                        <input type="number" v-model="exchangeRate" @change="triggerSync" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
                     </div>
                 </div>
                 <div class="flex items-center justify-between gap-4 relative z-10">
@@ -210,7 +212,7 @@
                 <div v-for="(region, rIdx) in mustBuyList" :key="rIdx" class="mb-5 last:mb-0 group/region">
                     <div class="flex items-center mb-2">
                         <span class="w-1.5 h-4 bg-red-300 rounded-r mr-2"></span>
-                        <input v-if="isMustBuyEditMode" v-model="region.area" class="font-bold text-sm text-slate-600 bg-slate-50 border-b border-slate-300 w-full focus:outline-none">
+                        <input v-if="isMustBuyEditMode" v-model="region.area" @change="triggerSync" class="font-bold text-sm text-slate-600 bg-slate-50 border-b border-slate-300 w-full focus:outline-none">
                         <h4 v-else class="font-bold text-sm text-slate-600">{{ region.area }}</h4>
                         
                         <button v-if="isMustBuyEditMode" @click="removeRegion(rIdx)" class="ml-2 text-slate-300 hover:text-red-400 text-xs"><i class="fa-solid fa-trash-can"></i></button>
@@ -246,15 +248,25 @@
             <div class="space-y-3">
                 <div v-for="(item, idx) in shoppingList" :key="idx" class="flex items-center bg-white p-3 rounded-2xl card-shadow transition-all hover:translate-x-1">
                     <div class="mr-3 pl-1">
-                        <input type="checkbox" v-model="item.checked" class="w-5 h-5 accent-deep-sea-blue rounded border-slate-300 cursor-pointer">
+                        <input type="checkbox" v-model="item.checked" @change="triggerSync" class="w-5 h-5 accent-deep-sea-blue rounded border-slate-300 cursor-pointer">
                     </div>
-                    <div class="w-12 h-12 bg-slate-50 rounded-lg overflow-hidden border border-slate-100 shrink-0 flex items-center justify-center">
-                        <img v-if="item.image" :src="item.image" class="w-full h-full object-cover">
-                        <i v-else class="fa-solid fa-gift text-slate-300 text-lg"></i>
+                    <!-- 分類圖示 -->
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm shrink-0 shadow-sm"
+                         :class="getShoppingCategoryColor(item.category)">
+                        <i :class="getShoppingCategoryIcon(item.category)"></i>
                     </div>
                     <div class="flex-1 ml-3 overflow-hidden">
-                        <p class="font-bold text-sm text-slate-700 truncate" :class="{'line-through text-slate-400': item.checked}">{{ item.name }}</p>
-                        <p class="text-xs text-slate-400 mt-0.5">數量: <span class="font-mono text-deep-sea-blue font-bold">{{ item.qty }}</span></p>
+                        <div class="flex items-center">
+                            <p class="font-bold text-sm text-slate-700 truncate" :class="{'line-through text-slate-400': item.checked}">{{ item.name }}</p>
+                            <!-- 顯示購買人 -->
+                            <span v-if="item.buyer" class="ml-2 text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 flex items-center shrink-0">
+                                <i class="fa-solid fa-user mr-1 text-[8px]"></i>{{ item.buyer }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-0.5 flex items-center">
+                            <span class="font-mono text-deep-sea-blue font-bold mr-2">x{{ item.qty }}</span>
+                            <span class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">{{ getShoppingCategoryName(item.category) }}</span>
+                        </p>
                     </div>
                     <button @click="removeShoppingItem(idx)" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors ml-2">
                         <i class="fa-solid fa-trash-can"></i>
@@ -279,6 +291,7 @@
                 </div>
             </div>
 
+            <!-- 分帳結算儀表板 -->
             <div class="bg-white rounded-3xl p-5 mb-6 shadow-sm border border-slate-100">
                 <h3 class="font-bold text-slate-800 mb-4 flex items-center text-sm"><i class="fa-solid fa-scale-balanced text-warm-orange mr-2"></i> 分帳結算 (負為應付)</h3>
                 <div class="space-y-3">
@@ -297,6 +310,21 @@
                 </div>
             </div>
 
+            <!-- 最佳還款方案 -->
+            <div v-if="settlements.length > 0" class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl p-5 mb-6 shadow-sm border border-emerald-100">
+                <h3 class="font-bold text-emerald-800 mb-3 flex items-center text-sm"><i class="fa-solid fa-hand-holding-dollar mr-2"></i> 建議還款方案</h3>
+                <div class="space-y-2">
+                    <div v-for="(txn, idx) in settlements" :key="idx" class="flex items-center justify-between bg-white/60 p-2.5 rounded-xl border border-emerald-100/50">
+                        <div class="flex items-center text-sm text-slate-700">
+                            <span class="font-bold text-slate-800">{{ txn.from }}</span>
+                            <i class="fa-solid fa-arrow-right-long mx-2 text-emerald-400 text-xs"></i>
+                            <span class="font-bold text-slate-800">{{ txn.to }}</span>
+                        </div>
+                        <span class="font-bold text-emerald-600 text-sm font-mono">¥{{ formatNumber(txn.amount) }}</span>
+                    </div>
+                </div>
+            </div>
+
             <div class="bg-white rounded-t-3xl min-h-[400px] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] -mx-4 px-8">
                 <h3 class="font-bold text-slate-800 mb-5 flex items-center"><i class="fa-solid fa-receipt text-slate-300 mr-2"></i>支出紀錄</h3>
                 <div v-if="expenses.length === 0" class="text-center text-slate-300 py-10">尚無紀錄</div>
@@ -309,9 +337,12 @@
                             <div>
                                 <p class="font-bold text-slate-700 text-sm">{{ exp.name }}</p>
                                 <p class="text-[10px] text-slate-400 mt-0.5">
-                                    <span class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 mr-1">{{ exp.payer }}</span>
-                                    <span v-if="exp.involved.length < members.length" class="text-warm-orange">({{ exp.involved.length }}人)</span>
-                                    <span v-else>全體</span>
+                                    <span v-if="exp.category === 'transfer'" class="text-emerald-600 font-bold">轉帳還款</span>
+                                    <span v-else>
+                                        <span class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-500 mr-1">{{ exp.payer }}</span>
+                                        <span v-if="exp.involved && exp.involved.length < members.length" class="text-warm-orange">({{ exp.involved.length }}人)</span>
+                                        <span v-else>全體</span>
+                                    </span>
                                 </p>
                             </div>
                         </div>
@@ -359,15 +390,39 @@
     <div v-if="showShoppingModal" class="fixed inset-0 bg-deep-sea-blue/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
             <h3 class="font-bold text-lg mb-4 text-center">新增購物清單</h3>
-            <input v-model="newShoppingItem.name" type="text" placeholder="商品名稱" class="w-full bg-slate-50 rounded-xl p-4 mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-deep-sea-blue">
-            <input v-model="newShoppingItem.qty" type="number" placeholder="數量" class="w-full bg-slate-50 rounded-xl p-4 mb-4 text-sm focus:outline-none">
-            <div class="relative mb-6">
-                <input type="file" @change="handleImageUpload" class="hidden" id="fileInput">
-                <label for="fileInput" class="w-full h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer text-slate-400 hover:bg-slate-100">
-                    <span v-if="!newShoppingItem.image" class="flex flex-col items-center text-xs"><i class="fa-solid fa-camera text-2xl mb-2"></i> 上傳照片</span>
-                    <img v-else :src="newShoppingItem.image" class="h-full w-full object-contain rounded-xl">
-                </label>
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="col-span-2">
+                    <input v-model="newShoppingItem.name" type="text" placeholder="商品名稱" class="w-full bg-slate-50 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-deep-sea-blue">
+                </div>
+                <div>
+                    <input v-model="newShoppingItem.qty" type="number" placeholder="數量" class="w-full bg-slate-50 rounded-xl p-3 text-sm focus:outline-none">
+                </div>
             </div>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-slate-500 mb-2 pl-1">指定購買人</label>
+                <div class="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+                    <button v-for="m in members" :key="m"
+                            @click="newShoppingItem.buyer = m"
+                            :class="newShoppingItem.buyer === m ? 'bg-deep-sea-blue text-white shadow-md' : 'bg-slate-50 text-slate-500 border border-slate-100'"
+                            class="whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+                        {{ m }}
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-500 mb-2 pl-1">商品分類</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button v-for="cat in shoppingCategories" :key="cat.id" 
+                            @click="newShoppingItem.category = cat.id"
+                            :class="newShoppingItem.category === cat.id ? 'bg-deep-sea-blue text-white shadow-md' : 'bg-slate-50 text-slate-500 hover:bg-slate-100'"
+                            class="py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center">
+                        <i :class="cat.icon" class="mr-1.5"></i> {{ cat.name }}
+                    </button>
+                </div>
+            </div>
+
             <div class="flex space-x-3">
                 <button @click="showShoppingModal = false" class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 font-bold text-sm">取消</button>
                 <button @click="addShoppingItem" class="flex-1 py-3 rounded-xl bg-deep-sea-blue text-white font-bold text-sm shadow-md">新增</button>
@@ -378,42 +433,80 @@
     <!-- 3. 新增花費 Modal -->
     <div v-if="showExpenseModal" class="fixed inset-0 bg-deep-sea-blue/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl max-h-[95vh] overflow-y-auto">
-            <h3 class="font-bold text-lg mb-4 text-center text-slate-800">記一筆</h3>
-            <div class="grid grid-cols-2 gap-3 mb-3">
-                <input v-model="newExpense.date" type="date" class="bg-slate-50 rounded-xl p-3 text-sm outline-none">
-                <select v-model="newExpense.category" class="bg-slate-50 rounded-xl p-3 text-sm outline-none">
-                    <option value="food">飲食</option>
-                    <option value="shopping">購物</option>
-                    <option value="transport">交通</option>
-                    <option value="stay">住宿</option>
-                    <option value="ticket">門票</option>
-                </select>
+            
+            <!-- 頂部切換 Tab -->
+            <div class="flex mb-5 bg-slate-100 p-1 rounded-xl">
+                <button @click="newExpense.type = 'expense'" :class="newExpense.type === 'expense' ? 'bg-white shadow text-deep-sea-blue' : 'text-slate-400'" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all">一般消費</button>
+                <button @click="newExpense.type = 'transfer'" :class="newExpense.type === 'transfer' ? 'bg-white shadow text-emerald-600' : 'text-slate-400'" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all">轉帳還款</button>
             </div>
-            <input v-model="newExpense.name" placeholder="項目名稱" class="w-full bg-slate-50 rounded-xl p-4 mb-4 text-sm focus:outline-none">
-            <div class="relative mb-4">
-                <span class="absolute left-4 top-4 text-slate-400 font-bold">¥</span>
-                <input v-model.number="newExpense.amount" type="number" placeholder="金額" class="w-full bg-slate-50 rounded-xl p-4 pl-8 text-sm focus:outline-none font-bold text-lg">
+
+            <!-- 一般消費模式 -->
+            <div v-if="newExpense.type === 'expense'">
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <input v-model="newExpense.date" type="date" class="bg-slate-50 rounded-xl p-3 text-sm outline-none">
+                    <select v-model="newExpense.category" class="bg-slate-50 rounded-xl p-3 text-sm outline-none">
+                        <option value="food">飲食</option>
+                        <option value="shopping">購物</option>
+                        <option value="transport">交通</option>
+                        <option value="stay">住宿</option>
+                        <option value="ticket">門票</option>
+                    </select>
+                </div>
+                <input v-model="newExpense.name" placeholder="項目名稱" class="w-full bg-slate-50 rounded-xl p-4 mb-4 text-sm focus:outline-none">
+                <div class="relative mb-4">
+                    <span class="absolute left-4 top-4 text-slate-400 font-bold">¥</span>
+                    <input v-model.number="newExpense.amount" type="number" placeholder="金額" class="w-full bg-slate-50 rounded-xl p-4 pl-8 text-sm focus:outline-none font-bold text-lg">
+                </div>
+                <div class="mb-6 border-t border-slate-100 pt-4">
+                    <label class="block text-xs font-bold text-slate-500 mb-2">付款人 (誰先墊?)</label>
+                    <select v-model="newExpense.payer" class="w-full bg-blue-50 text-deep-sea-blue font-bold rounded-xl p-3 text-sm outline-none mb-4">
+                        <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
+                    </select>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-xs font-bold text-slate-500">分攤對象</label>
+                        <button @click="toggleSelectAll" class="text-xs text-deep-sea-blue font-bold">{{ newExpense.involved.length === members.length ? '全取消' : '全選' }}</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <label v-for="m in members" :key="m" class="cursor-pointer relative">
+                            <input type="checkbox" :value="m" v-model="newExpense.involved" class="member-checkbox hidden">
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center text-xs text-slate-600 transition-colors hover:bg-slate-100">{{ m }}</div>
+                        </label>
+                    </div>
+                    <div v-if="newExpense.amount > 0 && newExpense.involved.length > 0" class="bg-orange-50 rounded-xl p-3 flex justify-between items-center">
+                        <span class="text-xs text-orange-800">每人應付</span>
+                        <span class="font-bold text-orange-600">¥ {{ formatNumber(Math.ceil(newExpense.amount / newExpense.involved.length)) }}</span>
+                    </div>
+                </div>
             </div>
-            <div class="mb-6 border-t border-slate-100 pt-4">
-                <label class="block text-xs font-bold text-slate-500 mb-2">付款人 (誰先墊?)</label>
-                <select v-model="newExpense.payer" class="w-full bg-blue-50 text-deep-sea-blue font-bold rounded-xl p-3 text-sm outline-none mb-4">
-                    <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
-                </select>
-                <div class="flex justify-between items-center mb-2">
-                    <label class="block text-xs font-bold text-slate-500">分攤對象</label>
-                    <button @click="toggleSelectAll" class="text-xs text-deep-sea-blue font-bold">{{ newExpense.involved.length === members.length ? '全取消' : '全選' }}</button>
-                </div>
-                <div class="grid grid-cols-2 gap-2 mb-3">
-                    <label v-for="m in members" :key="m" class="cursor-pointer relative">
-                        <input type="checkbox" :value="m" v-model="newExpense.involved" class="member-checkbox hidden">
-                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-2 text-center text-xs text-slate-600 transition-colors hover:bg-slate-100">{{ m }}</div>
-                    </label>
-                </div>
-                <div v-if="newExpense.amount > 0 && newExpense.involved.length > 0" class="bg-orange-50 rounded-xl p-3 flex justify-between items-center">
-                    <span class="text-xs text-orange-800">每人應付</span>
-                    <span class="font-bold text-orange-600">¥ {{ formatNumber(Math.ceil(newExpense.amount / newExpense.involved.length)) }}</span>
+
+            <!-- 轉帳模式 -->
+            <div v-else>
+                <div class="mb-4">
+                    <input v-model="newExpense.date" type="date" class="w-full bg-slate-50 rounded-xl p-3 text-sm outline-none mb-4">
+                    
+                    <div class="flex items-center justify-between gap-2 mb-4">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-slate-400 mb-1">轉出 (還錢)</label>
+                            <select v-model="newExpense.payer" class="w-full bg-red-50 text-red-600 font-bold rounded-xl p-3 text-sm outline-none">
+                                <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
+                            </select>
+                        </div>
+                        <i class="fa-solid fa-arrow-right text-slate-300 mt-4"></i>
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-slate-400 mb-1">轉入 (收錢)</label>
+                            <select v-model="newExpense.payee" class="w-full bg-green-50 text-green-600 font-bold rounded-xl p-3 text-sm outline-none">
+                                <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="relative mb-4">
+                        <span class="absolute left-4 top-4 text-slate-400 font-bold">¥</span>
+                        <input v-model.number="newExpense.amount" type="number" placeholder="轉帳金額" class="w-full bg-slate-50 rounded-xl p-4 pl-8 text-sm focus:outline-none font-bold text-lg text-emerald-600">
+                    </div>
                 </div>
             </div>
+
             <div class="flex space-x-3">
                 <button @click="showExpenseModal = false" class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 font-bold text-sm">取消</button>
                 <button @click="addExpense" class="flex-1 py-3 rounded-xl bg-accent-yellow text-deep-sea-blue font-bold text-sm shadow-md">儲存</button>
@@ -427,9 +520,8 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { createApp, ref, computed, onMounted, watch } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+    import { createApp, ref, computed, onMounted, watch, nextTick } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
-    // Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyDqqag1anowaW3XPQejcYZl8lUTgE7FRWs",
       authDomain: "hokkaido-trip-55b8f.firebaseapp.com",
@@ -458,88 +550,20 @@
             const currencyInput = ref(50000);
             const members = ref(['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟']);
             
-            // Sync Data
-            const shoppingList = ref([
-                { name: '六花亭', qty: 5, checked: false, image: null },
-                { name: '白色戀人', qty: 2, checked: false, image: null }
-            ]);
-            const expenses = ref([
-                { name: '機票代墊', amount: 175000, category: 'flight', date: '2026-01-15', payment: 'card', payer: '徐續簡進', involved: ['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟'] }
-            ]);
-            
-            const initialItineraryData = [
-                [
-                    { id: 1, category: 'flight', startTime: '02:50', name: '桃機出發 (VZ570)', note: '07:30 抵達新千歲', isNoteExpanded: false },
-                    { id: 2, category: 'transport', startTime: '08:45', name: '包車前往星野', note: '新千歲出發', isNoteExpanded: false },
-                    { id: 3, category: 'sightseeing', startTime: '09:00', name: '霧冰平台', note: '搭乘雲海纜車 ¥2500，KUMO Cafe', isNoteExpanded: false },
-                    { id: 4, category: 'sightseeing', startTime: '13:00', name: 'Snow Kart 雪上卡丁車', note: '費用 ¥3500 (需12/1預約)', isNoteExpanded: false },
-                    { id: 5, category: 'accommodation', startTime: '15:00', name: 'Check-in The Tower', note: '', isNoteExpanded: false },
-                    { id: 6, category: 'food', startTime: '17:00', name: 'Forest Restaurant', note: '自助晚餐 ¥5500', isNoteExpanded: false },
-                    { id: 7, category: 'sightseeing', startTime: '19:00', name: '愛絲冰城', note: '入場 ¥600 (最後入場21:30)', isNoteExpanded: false }
-                ],
-                [
-                    { id: 8, category: 'food', startTime: '08:00', name: '飯店早餐', note: '', isNoteExpanded: false },
-                    { id: 9, category: 'transport', startTime: '08:45', name: '包車出發', note: '', isNoteExpanded: false },
-                    { id: 10, category: 'sightseeing', startTime: '11:30', name: '定山溪泛舟', note: '費用 ¥9500 (12:00開始)', address: '札幌市南区定山渓温泉西４丁目371-4', isNoteExpanded: false },
-                    { id: 11, category: 'accommodation', startTime: '15:00', name: 'Check-in Vessel Inn', note: '札幌中島公園', isNoteExpanded: false },
-                    { id: 12, category: 'food', startTime: '18:00', name: '成吉思汗烤羊肉', note: '札幌必吃', isNoteExpanded: false }
-                ],
-                [
-                     { id: 13, category: 'transport', startTime: '08:30', name: '包車出發', note: '札幌 > 登別 > 洞爺湖 > 函館', isNoteExpanded: false },
-                     { id: 14, category: 'sightseeing', startTime: '10:30', name: '登別地獄谷', note: '', isNoteExpanded: false },
-                     { id: 15, category: 'sightseeing', startTime: '13:00', name: '洞爺湖', note: '昭和新山、湖畔展望台', isNoteExpanded: false },
-                     { id: 16, category: 'accommodation', startTime: '17:00', name: 'Check-in OMO5 函館', note: '', isNoteExpanded: false },
-                     { id: 161, category: 'food', startTime: '19:00', name: '晚餐', note: '函館市區或飯店周邊', isNoteExpanded: false }
-                ],
-                [
-                    { id: 17, category: 'food', startTime: '07:00', name: '函館朝市', note: '釣烏賊、海鮮丼', isNoteExpanded: false },
-                    { id: 18, category: 'sightseeing', startTime: '10:00', name: '五稜郭公園＋塔', note: '俯瞰星形堡壘', isNoteExpanded: false },
-                    { id: 19, category: 'shopping', startTime: '13:00', name: '金森紅磚倉庫', note: '購物、下午茶', isNoteExpanded: false },
-                    { id: 20, category: 'sightseeing', startTime: '15:00', name: '元町教會群、八幡坂', note: '坡道海景', isNoteExpanded: false },
-                    { id: 21, category: 'sightseeing', startTime: '18:00', name: '函館山夜景', note: '搭纜車 (飯店免費接駁)', isNoteExpanded: false },
-                    { id: 211, category: 'food', startTime: '20:00', name: '晚餐', note: '小丑漢堡或鹽味拉麵', isNoteExpanded: false }
-                ],
-                [
-                    { id: 22, category: 'transport', startTime: '09:00', name: 'JR 特急北斗號', note: '往札幌 (約4hr, ¥9440)', isNoteExpanded: false },
-                    { id: 23, category: 'accommodation', startTime: '15:00', name: 'Check-in Royal Park', note: '大通公園旁', isNoteExpanded: false },
-                    { id: 24, category: 'sightseeing', startTime: 'Evening', name: '大通公園散策', note: '', isNoteExpanded: false }
-                ],
-                [
-                    { id: 25, category: 'transport', startTime: '10:00', name: 'JR 快速 Airport', note: '往小樽 (約35分)', isNoteExpanded: false },
-                    { id: 251, category: 'food', startTime: '11:00', name: '三角市場', note: '早午餐 (帝王蟹/海鮮丼)', isNoteExpanded: false },
-                    { id: 26, category: 'sightseeing', startTime: '12:00', name: '小樽運河', note: '淺草橋拍照、運河倉庫', isNoteExpanded: false },
-                    { id: 27, category: 'shopping', startTime: '13:00', name: '堺町通商店街', note: '六花亭、北菓樓、LeTAO、北一哨子館', isNoteExpanded: false },
-                    { id: 271, category: 'food', startTime: '18:00', name: '晚餐', note: '若雞時代或壽司通', isNoteExpanded: false }
-                ],
-                [
-                    { id: 28, category: 'transport', startTime: '07:40', name: '集合：大通站31號門', note: '觀光巴士', isNoteExpanded: false },
-                    { id: 29, category: 'sightseeing', startTime: '10:30', name: '旭山動物園', note: '企鵝散步 (視融雪狀況)', isNoteExpanded: false },
-                    { id: 30, category: 'transport', startTime: '20:00', name: '返回札幌', note: '', isNoteExpanded: false },
-                    { id: 301, category: 'food', startTime: '20:30', name: '晚餐', note: '湯咖哩 (Suage+/GARAKU) 或拉麵', isNoteExpanded: false }
-                ],
-                [
-                    { id: 31, category: 'sightseeing', startTime: '09:00', name: '北海道神宮', note: '參拜、六花亭判官餅', isNoteExpanded: false },
-                    { id: 311, category: 'food', startTime: '12:00', name: '二條市場', note: '海膽、哈密瓜', isNoteExpanded: false },
-                    { id: 312, category: 'shopping', startTime: '14:00', name: '分組自由行', note: '騎士組: Ricoland 白石店 / 購物組: 狸小路', isNoteExpanded: false },
-                    { id: 313, category: 'food', startTime: '19:00', name: '歡送會晚餐', note: '難陀蟹吃到飽或頂級和牛', isNoteExpanded: false }
-                ],
-                [
-                    { id: 32, category: 'transport', startTime: '11:00', name: '前往新千歲機場', note: '', isNoteExpanded: false },
-                    { id: 33, category: 'shopping', startTime: '12:00', name: '國內線航廈2F', note: '最後採買 (Royce, 白色戀人)', isNoteExpanded: false },
-                    { id: 34, category: 'flight', startTime: '14:40', name: 'CI131 起飛', note: '平安返國', isNoteExpanded: false }
-                ]
-            ];
-            
-            const initialMustBuyList = [
-                { area: '小樽', items: ['六花亭 奶油葡萄夾心', '北菓樓 妖精之森', 'LeTAO 雙層乳酪', '音樂盒'] },
-                { area: '札幌', items: ['札幌農學校 餅乾', '白色戀人', '佐藤水產', 'Kinotoya 起司塔'] },
-                { area: '函館', items: ['Snaffle’s 起司蛋糕', '烏賊飯'] }
+            const shoppingCategories = [
+                { id: 'souvenir', name: '伴手禮', color: 'bg-orange-400', icon: 'fa-solid fa-gift' },
+                { id: 'snack', name: '零食', color: 'bg-yellow-400', icon: 'fa-solid fa-cookie-bite' },
+                { id: 'drug', name: '藥妝', color: 'bg-pink-400', icon: 'fa-solid fa-pump-soap' },
+                { id: 'electric', name: '電器', color: 'bg-blue-400', icon: 'fa-solid fa-plug' },
+                { id: 'clothes', name: '服飾', color: 'bg-purple-400', icon: 'fa-solid fa-shirt' },
+                { id: 'other', name: '其他', color: 'bg-slate-400', icon: 'fa-solid fa-bag-shopping' }
             ];
 
-            const itineraryData = ref(initialItineraryData);
-            const mustBuyList = ref(initialMustBuyList);
+            const shoppingList = ref([]);
+            const expenses = ref([]);
+            const itineraryData = ref([]);
+            const mustBuyList = ref([]);
 
-            // Modals & UI States
             const showItineraryModal = ref(false);
             const showShoppingModal = ref(false);
             const showExpenseModal = ref(false);
@@ -549,77 +573,129 @@
             const isRemoteUpdate = ref(false);
 
             const newItinerary = ref({ id: null, category: 'sightseeing', name: '', startTime: '', address: '', price: '', note: '' });
-            const newShoppingItem = ref({ name: '', qty: 1, image: null });
-            const newExpense = ref({ name: '', amount: null, category: 'food', date: '2026-03-06', payment: 'cash', payer: members.value[0], involved: [...members.value] });
+            const newShoppingItem = ref({ name: '', qty: 1, category: 'souvenir', buyer: '' });
+            
+            // 花費狀態 (增加 type: 'expense' | 'transfer')
+            const newExpense = ref({ 
+                type: 'expense', // 預設為消費
+                name: '', amount: null, category: 'food', date: '2026-03-06', 
+                payment: 'cash', payer: members.value[0], payee: members.value[1], involved: [...members.value] 
+            });
 
             // Static Data
-            const CATEGORY_MAP = { sightseeing: { color: 'bg-green-500', icon: 'fa-solid fa-camera' }, food: { color: 'bg-red-400', icon: 'fa-solid fa-utensils' }, shopping: { color: 'bg-orange-400', icon: 'fa-solid fa-bag-shopping' }, accommodation: { color: 'bg-purple-500', icon: 'fa-solid fa-bed' }, flight: { color: 'bg-blue-500', icon: 'fa-solid fa-plane' }, transport: { color: 'bg-indigo-500', icon: 'fa-solid fa-van-shuttle' }, ticket: { color: 'bg-cyan-500', icon: 'fa-solid fa-ticket' }, stay: { color: 'bg-purple-500', icon: 'fa-solid fa-hotel' } };
+            const CATEGORY_MAP = { sightseeing: { color: 'bg-green-500', icon: 'fa-solid fa-camera' }, food: { color: 'bg-red-400', icon: 'fa-solid fa-utensils' }, shopping: { color: 'bg-orange-400', icon: 'fa-solid fa-bag-shopping' }, accommodation: { color: 'bg-purple-500', icon: 'fa-solid fa-bed' }, flight: { color: 'bg-blue-500', icon: 'fa-solid fa-plane' }, transport: { color: 'bg-indigo-500', icon: 'fa-solid fa-van-shuttle' }, ticket: { color: 'bg-cyan-500', icon: 'fa-solid fa-ticket' }, stay: { color: 'bg-purple-500', icon: 'fa-solid fa-hotel' }, transfer: { color: 'bg-teal-500', icon: 'fa-solid fa-money-bill-transfer' } };
             const dates = ref([{ date: '3/06', weekday: '五', area: '星野', temp: '-2°C', weather: 'snow', transport: '包車' }, { date: '3/07', weekday: '六', area: '定山溪/札幌', temp: '0°C', weather: 'cloudy', transport: '包車' }, { date: '3/08', weekday: '日', area: '登別/函館', temp: '2°C', weather: 'sunny', transport: '包車' }, { date: '3/09', weekday: '一', area: '函館', temp: '3°C', weather: 'sunny', transport: '市電' }, { date: '3/10', weekday: '二', area: '函館/札幌', temp: '1°C', weather: 'cloudy', transport: 'JR' }, { date: '3/11', weekday: '三', area: '小樽', temp: '-1°C', weather: 'snow', transport: 'JR' }, { date: '3/12', weekday: '四', area: '旭山', temp: '-5°C', weather: 'snow', transport: '巴士' }, { date: '3/13', weekday: '五', area: '札幌', temp: '1°C', weather: 'cloudy', transport: '地鐵' }, { date: '3/14', weekday: '六', area: '回程', temp: '2°C', weather: 'sunny', transport: '飛機' }]);
             const hotels = ref([{ name: '星野リゾート トマム The Tower', date: '3/06', address: '北海道勇払郡占冠村中トマム' }, { name: 'Vessel Inn 札幌中島公園', date: '3/07', address: '札幌市中央區南九條西4-1-2' }, { name: 'OMO5 函館 by 星野集團', date: '3/08', address: '函館市若松町24番1' }, { name: 'Royal Park Canvas 札幌大通公園', date: '3/10', address: '札幌市中央区大通西1-12' }]);
 
             // Computed
             const currencyResult = computed(() => Math.round(currencyInput.value * exchangeRate.value));
             const currentItinerary = computed(() => itineraryData.value[selectedDateIndex.value] || []);
-            const totalExpensesJPY = computed(() => expenses.value.reduce((sum, e) => sum + (e.amount || 0), 0));
+            const totalExpensesJPY = computed(() => expenses.value.filter(e => e.category !== 'transfer').reduce((sum, e) => sum + (e.amount || 0), 0));
             const totalExpensesTWD = computed(() => Math.round(totalExpensesJPY.value * exchangeRate.value));
+            
+            // Settlement Logic (Updated for Transfer)
             const balanceSheet = computed(() => {
                 const balances = {};
                 members.value.forEach(m => balances[m] = { name: m, paid: 0, share: 0, balance: 0 });
+                
                 expenses.value.forEach(exp => {
-                    if (balances[exp.payer]) balances[exp.payer].paid += exp.amount;
-                    if (exp.involved.length > 0) {
-                        const amountPerPerson = exp.amount / exp.involved.length;
-                        exp.involved.forEach(p => { if(balances[p]) balances[p].share += amountPerPerson; });
+                    if (exp.category === 'transfer') {
+                        // 轉帳邏輯：A 給 B 錢 => A paid, B share (A 債權增加/債務減少，B 債權減少/債務增加)
+                        if (balances[exp.payer]) balances[exp.payer].paid += exp.amount;
+                        if (balances[exp.involved[0]]) balances[exp.involved[0]].share += exp.amount;
+                    } else {
+                        // 一般消費邏輯
+                        if (balances[exp.payer]) balances[exp.payer].paid += exp.amount;
+                        if (exp.involved && exp.involved.length > 0) {
+                            const amountPerPerson = exp.amount / exp.involved.length;
+                            exp.involved.forEach(p => { if(balances[p]) balances[p].share += amountPerPerson; });
+                        }
                     }
                 });
                 return Object.values(balances).map(m => { m.balance = Math.round(m.paid - m.share); return m; });
             });
 
-            // Cloud Sync Logic
+            // Settlement Plan
+            const settlements = computed(() => {
+                let debts = balanceSheet.value.filter(m => m.balance < -10).map(m => ({...m})); // 忽略小額誤差
+                let credits = balanceSheet.value.filter(m => m.balance > 10).map(m => ({...m}));
+                debts.sort((a, b) => a.balance - b.balance);
+                credits.sort((a, b) => b.balance - a.balance);
+
+                const result = [];
+                let i = 0, j = 0;
+                while(i < debts.length && j < credits.length) {
+                    let debtor = debts[i];
+                    let creditor = credits[j];
+                    let amount = Math.min(Math.abs(debtor.balance), creditor.balance);
+                    
+                    if(amount > 0) {
+                        result.push({ from: debtor.name, to: creditor.name, amount: Math.round(amount) });
+                    }
+                    debtor.balance += amount;
+                    creditor.balance -= amount;
+                    if(Math.abs(debtor.balance) < 10) i++;
+                    if(Math.abs(creditor.balance) < 10) j++;
+                }
+                return result;
+            });
+
+            const syncStatusClass = computed(() => {
+               if(statusMessage.value === '儲存中...') return 'busy';
+               if(isConnected.value) return 'online';
+               return '';
+            });
+
+            let debounceTimer = null;
+            const triggerSync = () => {
+                if (isRemoteUpdate.value) return; 
+                statusMessage.value = '儲存中...';
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(syncData, 1500); 
+            };
+
             const syncData = () => {
                 if (!db) return;
-                statusMessage.value = '同步中...';
                 setDoc(doc(db, "trips", "hokkaido2026"), {
                     shoppingList: shoppingList.value,
                     expenses: expenses.value,
-                    itineraryData: JSON.stringify(itineraryData.value), // Serialize nested array
+                    itineraryData: JSON.stringify(itineraryData.value),
                     mustBuyList: mustBuyList.value,
                     exchangeRate: exchangeRate.value,
                     lastUpdated: new Date()
                 }).then(() => {
                     statusMessage.value = '已同步';
-                    setTimeout(() => isConnected.value = true, 500);
+                    isConnected.value = true;
                 }).catch(err => {
                     statusMessage.value = '同步失敗';
                     console.error(err);
                 });
             };
 
-            // Watchers for Auto-Save
             watch([shoppingList, expenses, itineraryData, mustBuyList, exchangeRate], () => {
-                if (isRemoteUpdate.value) return; // Skip if update comes from server
-                syncData();
+                if (isRemoteUpdate.value) return; 
+                triggerSync();
             }, { deep: true });
 
             onMounted(() => {
                 if (db) {
                     onSnapshot(doc(db, "trips", "hokkaido2026"), (doc) => {
                         if (doc.exists()) {
-                            isRemoteUpdate.value = true;
+                            isRemoteUpdate.value = true; 
                             const data = doc.data();
                             if(data.shoppingList) shoppingList.value = data.shoppingList;
                             if(data.expenses) expenses.value = data.expenses;
                             if(data.itineraryData) {
-                                // Deserialize nested array
-                                itineraryData.value = typeof data.itineraryData === 'string' ? JSON.parse(data.itineraryData) : data.itineraryData;
+                                try {
+                                    itineraryData.value = typeof data.itineraryData === 'string' ? JSON.parse(data.itineraryData) : data.itineraryData;
+                                } catch(e) { console.error("Data parse error", e); }
                             }
                             if(data.mustBuyList) mustBuyList.value = data.mustBuyList;
                             if(data.exchangeRate) exchangeRate.value = data.exchangeRate;
                             isConnected.value = true;
                             statusMessage.value = '連線正常';
-                            setTimeout(() => isRemoteUpdate.value = false, 100);
+                            nextTick(() => { isRemoteUpdate.value = false; });
                         } else {
-                            // Initialize DB with default data
                             syncData();
                         }
                     });
@@ -630,15 +706,18 @@
 
             // Methods
             const formatNumber = (num) => num ? num.toLocaleString() : '0';
-            const calculateCurrency = () => {}; // computed handles it
+            const calculateCurrency = () => {}; 
             const getCategoryColor = (cat) => CATEGORY_MAP[cat]?.color || 'bg-gray-400';
             const getCategoryIcon = (cat) => CATEGORY_MAP[cat]?.icon || 'fa-solid fa-circle';
+            const getShoppingCategoryColor = (id) => shoppingCategories.find(c => c.id === id)?.color || 'bg-slate-400';
+            const getShoppingCategoryIcon = (id) => shoppingCategories.find(c => c.id === id)?.icon || 'fa-solid fa-bag-shopping';
+            const getShoppingCategoryName = (id) => shoppingCategories.find(c => c.id === id)?.name || '其他';
             const getWeatherIcon = (w) => w === 'snow' ? 'fa-solid fa-snowflake' : (w === 'sunny' ? 'fa-solid fa-sun' : 'fa-solid fa-cloud');
             const openMap = (q) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`, '_blank');
             const handleAddClick = () => {
                 if (currentTab.value === 'itinerary') { isEditMode.value = false; newItinerary.value = { category: 'sightseeing' }; showItineraryModal.value = true; }
-                else if (currentTab.value === 'shopping') { newShoppingItem.value = { name: '', qty: 1 }; showShoppingModal.value = true; }
-                else if (currentTab.value === 'expenses') { newExpense.value = { category: 'food', payment: 'cash', date: '2026-03-06', payer: members.value[0], involved: [...members.value], amount: null, name: '' }; showExpenseModal.value = true; }
+                else if (currentTab.value === 'shopping') { newShoppingItem.value = { name: '', qty: 1, category: 'souvenir', buyer: members.value[0] }; showShoppingModal.value = true; }
+                else if (currentTab.value === 'expenses') { newExpense.value = { type: 'expense', category: 'food', payment: 'cash', date: '2026-03-06', payer: members.value[0], payee: members.value[1], involved: [...members.value], amount: null, name: '' }; showExpenseModal.value = true; }
             };
             const toggleSelectAll = () => newExpense.value.involved = newExpense.value.involved.length === members.value.length ? [] : [...members.value];
             const saveItineraryItem = () => {
@@ -652,34 +731,58 @@
                     itineraryData.value[selectedDateIndex.value].sort((a,b) => (a.startTime > b.startTime) ? 1 : -1);
                 }
                 showItineraryModal.value = false;
-                syncData();
+                triggerSync();
             };
-            const removeItineraryItem = () => { /* Not implemented in UI yet but logic exists */ };
             const editItem = (item) => { isEditMode.value = true; newItinerary.value = { ...item }; showItineraryModal.value = true; };
-            const addShoppingItem = () => { if(newShoppingItem.value.name) shoppingList.value.push({ ...newShoppingItem.value, checked: false }); showShoppingModal.value = false; syncData(); };
-            const removeShoppingItem = (idx) => { shoppingList.value.splice(idx, 1); syncData(); };
-            const handleImageUpload = (e) => {
-                const file = e.target.files[0];
-                if(file) { const reader = new FileReader(); reader.onload = (e) => newShoppingItem.value.image = e.target.result; reader.readAsDataURL(file); }
+            const addShoppingItem = () => { if(newShoppingItem.value.name) shoppingList.value.push({ ...newShoppingItem.value, checked: false }); showShoppingModal.value = false; triggerSync(); };
+            const removeShoppingItem = (idx) => { shoppingList.value.splice(idx, 1); triggerSync(); };
+            const resetShoppingForm = () => { newShoppingItem.value = { name: '', qty: 1, category: 'souvenir', buyer: members.value[0] }; };
+            
+            // Add Expense (Handle Transfer vs Expense)
+            const addExpense = () => { 
+                if(!newExpense.value.amount) return;
+                
+                if (newExpense.value.type === 'transfer') {
+                    // 轉帳記錄
+                    expenses.value.push({
+                        name: `轉帳: ${newExpense.value.payer} ➔ ${newExpense.value.payee}`,
+                        amount: newExpense.value.amount,
+                        category: 'transfer',
+                        date: newExpense.value.date,
+                        payer: newExpense.value.payer,
+                        involved: [newExpense.value.payee] // 只有收款人涉及
+                    });
+                } else {
+                    // 一般消費記錄
+                    if(!newExpense.value.name) return;
+                    expenses.value.push({ 
+                        ...newExpense.value, 
+                        involved: [...newExpense.value.involved] 
+                    }); 
+                }
+                showExpenseModal.value = false; 
+                triggerSync(); 
             };
-            const addExpense = () => { if(newExpense.value.name && newExpense.value.amount) { expenses.value.push({ ...newExpense.value, involved: [...newExpense.value.involved] }); showExpenseModal.value = false; syncData(); }};
-            const removeExpense = (idx) => { expenses.value.splice(idx, 1); syncData(); };
-            const addRegion = () => { if (newRegionName.value) { mustBuyList.value.push({ area: newRegionName.value, items: [] }); newRegionName.value = ''; syncData(); }};
-            const removeRegion = (idx) => { mustBuyList.value.splice(idx, 1); syncData(); };
-            const addMustBuyItem = (rIdx, event) => { const val = event.target.value.trim(); if (val) { mustBuyList.value[rIdx].items.push(val); event.target.value = ''; syncData(); }};
-            const removeMustBuyItem = (rIdx, iIdx) => { mustBuyList.value[rIdx].items.splice(iIdx, 1); syncData(); };
+            
+            const removeExpense = (idx) => { expenses.value.splice(idx, 1); triggerSync(); };
+            const addRegion = () => { if (newRegionName.value) { mustBuyList.value.push({ area: newRegionName.value, items: [] }); newRegionName.value = ''; triggerSync(); }};
+            const removeRegion = (idx) => { mustBuyList.value.splice(idx, 1); triggerSync(); };
+            const addMustBuyItem = (rIdx, event) => { const val = event.target.value.trim(); if (val) { mustBuyList.value[rIdx].items.push(val); event.target.value = ''; triggerSync(); }};
+            const removeMustBuyItem = (rIdx, iIdx) => { mustBuyList.value[rIdx].items.splice(iIdx, 1); triggerSync(); };
 
             return {
-                currentTab, dates, selectedDateIndex, hotels, mustBuyList, shoppingList, expenses, members,
-                itineraryData, currentItinerary, totalExpensesJPY, totalExpensesTWD, balanceSheet,
+                currentTab, dates, selectedDateIndex, hotels, mustBuyList, shoppingList, expenses, members, shoppingCategories,
+                itineraryData, currentItinerary, totalExpensesJPY, totalExpensesTWD, balanceSheet, settlements,
                 currencyInput, currencyResult, calculateCurrency, formatNumber, exchangeRate,
                 getCategoryColor, getCategoryIcon, getWeatherIcon, openMap,
+                getShoppingCategoryColor, getShoppingCategoryIcon, getShoppingCategoryName,
                 showItineraryModal, showShoppingModal, showExpenseModal, isEditMode,
                 newItinerary, newShoppingItem, newExpense,
                 handleAddClick, saveItineraryItem, editItem,
-                addShoppingItem, removeShoppingItem, handleImageUpload, addExpense, removeExpense,
+                addShoppingItem, removeShoppingItem, addExpense, removeExpense,
                 toggleSelectAll, isMustBuyEditMode, newRegionName, addRegion, removeRegion, addMustBuyItem, removeMustBuyItem,
-                syncData, isConnected, statusMessage
+                triggerSync, syncData, isConnected, statusMessage, syncStatusClass,
+                resetShoppingForm 
             }
         }
     }).mount('#app');
