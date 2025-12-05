@@ -28,7 +28,8 @@
                         'deep-sea-blue': '#01579B',     // 深海藍 (強調)
                         'accent-yellow': '#FFD54F',     // 溫暖黃 (按鈕)
                         'soft-gray': '#F5F5F5',         // 背景灰
-                        'jp-sage': '#A9B7AA'            // 日系鼠尾草綠 (輔助)
+                        'jp-sage': '#A9B7AA',           // 日系鼠尾草綠 (輔助)
+                        'warm-orange': '#FF8A65'        // 暖橘色 (分帳用)
                     }
                 }
             }
@@ -194,7 +195,7 @@
     <div class="header-bg">
         <div class="header-image-container">
             <!-- 使用您的圖片 -->
-            <img src="./banner.jpg"
+            <img src="./image_ec3041.jpg" 
                  onerror="this.src='https://images.unsplash.com/photo-1548578709-32269a838573?q=80&w=1920&auto=format&fit=crop'"
                  alt="北海道家族旅行">
             <div class="banner-text-overlay"></div>
@@ -228,7 +229,6 @@
         
         <!-- Tab 1: 行程 -->
         <div v-if="currentTab === 'itinerary'" class="animate-fade-in">
-            
             <!-- 日期選擇器 -->
             <div class="flex overflow-x-auto hide-scrollbar space-x-3 mb-4 snap-x px-1 sticky date-selector-sticky -mx-4 px-4 pb-2">
                 <div v-for="(day, index) in dates" :key="index" 
@@ -264,19 +264,15 @@
                     
                     <div class="bg-white rounded-2xl p-4 card-shadow relative z-10 border border-slate-50">
                         <div class="flex items-start gap-3">
-                            <!-- 左側時間與圖示 -->
                             <div class="flex flex-col items-center min-w-[50px]">
                                 <div class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md text-sm mb-1" :class="getCategoryColor(item.category)">
                                     <i :class="getCategoryIcon(item.category)"></i>
                                 </div>
                                 <span class="text-xs font-bold text-slate-500">{{ item.startTime }}</span>
                             </div>
-
-                            <!-- 右側內容 -->
                             <div class="flex-1 min-w-0">
                                 <div class="flex justify-between items-start">
                                     <h3 class="font-bold text-slate-800 text-lg leading-tight truncate pr-2">{{ item.name }}</h3>
-                                    <!-- 操作按鈕 -->
                                     <div class="flex gap-2 shrink-0">
                                         <button @click.stop="openMap(item.address || item.name)" class="w-7 h-7 bg-ice-blue/30 text-deep-sea-blue rounded-full flex items-center justify-center text-xs hover:bg-deep-sea-blue hover:text-white transition-colors">
                                             <i class="fa-solid fa-location-arrow"></i>
@@ -286,14 +282,10 @@
                                         </button>
                                     </div>
                                 </div>
-
-                                <!-- 詳細資訊 -->
                                 <div class="text-sm text-slate-500 mt-2 space-y-1">
                                     <p v-if="item.price" class="flex items-center"><i class="fa-solid fa-ticket w-4 text-center mr-1 text-ice-blue"></i> {{ item.price }}</p>
                                     <p v-if="item.address" class="flex items-center truncate"><i class="fa-solid fa-map-pin w-4 text-center mr-1 text-ice-blue"></i> {{ item.address }}</p>
                                 </div>
-
-                                <!-- 備註 -->
                                 <div v-if="item.note" class="mt-3 bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-xs text-slate-600">
                                     <div class="note-content" :class="{'expanded': item.isNoteExpanded}">{{ item.note }}</div>
                                     <button v-if="item.note.length > 40" @click="item.isNoteExpanded = !item.isNoteExpanded" class="text-deep-sea-blue font-bold mt-1">
@@ -304,7 +296,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div v-if="currentItinerary.length === 0" class="text-center py-10 text-slate-300">
                     <p>本日暫無行程，點擊右下角 + 新增</p>
                 </div>
@@ -313,10 +304,19 @@
 
         <!-- Tab 2: 資訊 -->
         <div v-if="currentTab === 'info'" class="animate-fade-in space-y-5 pb-20">
-            <!-- 匯率計算 -->
+            <!-- 匯率計算 (已更新：可編輯匯率) -->
             <div class="bg-gradient-to-br from-deep-sea-blue to-cyan-700 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                <h3 class="font-bold mb-4 flex items-center relative z-10"><i class="fa-solid fa-calculator mr-2"></i> 簡易匯率換算 (0.22)</h3>
+                
+                <div class="flex justify-between items-center mb-4 relative z-10">
+                    <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
+                    <!-- 匯率編輯區 -->
+                    <div class="flex items-center bg-white/20 rounded-lg px-2 py-1">
+                        <span class="text-xs text-cyan-200 mr-1">匯率:</span>
+                        <input type="number" v-model="exchangeRate" @input="calculateCurrency" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30 focus:border-white">
+                    </div>
+                </div>
+
                 <div class="flex items-center justify-between gap-4 relative z-10">
                     <div class="flex-1">
                         <label class="text-[10px] text-cyan-200 block mb-1">JPY</label>
@@ -366,7 +366,6 @@
         <!-- Tab 3: 購物清單 -->
         <div v-if="currentTab === 'shopping'" class="animate-fade-in pb-20">
             <div class="grid grid-cols-2 gap-4">
-                <!-- 新增按鈕卡片 -->
                 <div @click="showShoppingModal = true; resetShoppingForm()" class="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center text-slate-400 cursor-pointer min-h-[160px] hover:bg-slate-50 transition-colors">
                     <i class="fa-solid fa-plus text-3xl mb-2"></i>
                     <span class="text-xs font-bold">新增商品</span>
@@ -397,7 +396,34 @@
                 <div class="absolute -right-10 -top-10 bg-white/10 w-48 h-48 rounded-full blur-3xl"></div>
                 <p class="text-xs text-cyan-200 mb-1 relative z-10">預估總支出 (JPY)</p>
                 <h2 class="text-4xl font-bold relative z-10 tracking-tight">¥ {{ formatNumber(totalExpensesJPY) }}</h2>
-                <p class="text-xs text-right mt-2 opacity-80 relative z-10">約 NT$ {{ formatNumber(totalExpensesTWD) }}</p>
+                <div class="flex justify-between items-end mt-2 relative z-10 opacity-80">
+                    <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded">匯率 {{ exchangeRate }}</span>
+                    <p class="text-xs">約 NT$ {{ formatNumber(totalExpensesTWD) }}</p>
+                </div>
+            </div>
+
+            <!-- 獨立的 AA 分帳小工具 -->
+            <div class="bg-gradient-to-r from-warm-orange to-orange-400 text-white rounded-3xl p-5 mb-6 relative overflow-hidden shadow-md">
+                <div class="absolute -left-10 -bottom-10 bg-white/10 w-32 h-32 rounded-full blur-2xl"></div>
+                <h3 class="font-bold text-sm mb-3 flex items-center relative z-10"><i class="fa-solid fa-users mr-2"></i> 快速分帳計算機</h3>
+                <div class="grid grid-cols-2 gap-4 relative z-10">
+                    <div>
+                        <label class="text-[10px] text-orange-100 block mb-1">總金額 (JPY)</label>
+                        <input type="number" v-model.number="quickSplit.amount" class="w-full bg-white/20 border border-white/30 rounded-xl px-2 py-1.5 text-white font-bold text-sm focus:outline-none placeholder-white/50" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-orange-100 block mb-1">人數</label>
+                        <div class="flex items-center">
+                            <button @click="quickSplit.people > 1 ? quickSplit.people-- : null" class="w-6 h-6 bg-white/20 rounded-l-lg flex items-center justify-center text-xs hover:bg-white/30">-</button>
+                            <input type="number" v-model.number="quickSplit.people" class="w-10 bg-white/20 border-y border-white/30 py-1 text-center text-white font-bold text-sm focus:outline-none">
+                            <button @click="quickSplit.people++" class="w-6 h-6 bg-white/20 rounded-r-lg flex items-center justify-center text-xs hover:bg-white/30">+</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-white/20 flex justify-between items-center relative z-10">
+                    <span class="text-xs text-orange-100">每人應付</span>
+                    <span class="font-bold text-lg">¥ {{ formatNumber(Math.ceil((quickSplit.amount || 0) / quickSplit.people)) }}</span>
+                </div>
             </div>
 
             <div class="bg-white rounded-t-3xl min-h-[400px] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] -mx-4 px-8">
@@ -430,8 +456,7 @@
         <i class="fa-solid fa-plus"></i>
     </button>
 
-    <!-- Modals (彈出視窗) -->
-    
+    <!-- Modals -->
     <!-- 1. 新增行程 Modal -->
     <div v-if="showItineraryModal" class="fixed inset-0 bg-deep-sea-blue/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -452,7 +477,6 @@
             </div>
             <div class="flex space-x-3 mt-6">
                 <button @click="showItineraryModal = false" class="flex-1 py-3 rounded-xl bg-slate-100 text-slate-500 font-bold text-sm">取消</button>
-                <button v-if="isEditMode" @click="removeItineraryItem" class="w-1/3 py-3 rounded-xl bg-red-100 text-red-500 font-bold text-sm">刪除</button>
                 <button @click="saveItineraryItem" class="flex-1 py-3 rounded-xl bg-deep-sea-blue text-white font-bold text-sm shadow-md">{{ isEditMode ? '更新' : '新增' }}</button>
             </div>
         </div>
@@ -464,7 +488,6 @@
             <h3 class="font-bold text-lg mb-4 text-center">新增購物清單</h3>
             <input v-model="newShoppingItem.name" type="text" placeholder="商品名稱" class="w-full bg-slate-50 rounded-xl p-4 mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-deep-sea-blue">
             <input v-model="newShoppingItem.qty" type="number" placeholder="數量" class="w-full bg-slate-50 rounded-xl p-4 mb-4 text-sm focus:outline-none">
-            
             <div class="relative mb-6">
                 <input type="file" @change="handleImageUpload" class="hidden" id="fileInput">
                 <label for="fileInput" class="w-full h-32 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center cursor-pointer text-slate-400 hover:bg-slate-100">
@@ -482,8 +505,8 @@
     <!-- 3. 新增花費 Modal -->
     <div v-if="showExpenseModal" class="fixed inset-0 bg-deep-sea-blue/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
-            <h3 class="font-bold text-lg mb-4 text-center">記一筆</h3>
-            <div class="grid grid-cols-2 gap-3 mb-4">
+            <h3 class="font-bold text-lg mb-4 text-center text-slate-800">記一筆</h3>
+            <div class="grid grid-cols-2 gap-3 mb-3">
                 <input v-model="newExpense.date" type="date" class="bg-slate-50 rounded-xl p-3 text-sm outline-none">
                 <select v-model="newExpense.category" class="bg-slate-50 rounded-xl p-3 text-sm outline-none">
                     <option value="food">飲食</option>
@@ -498,6 +521,35 @@
                 <span class="absolute left-4 top-4 text-slate-400 font-bold">¥</span>
                 <input v-model.number="newExpense.amount" type="number" placeholder="金額" class="w-full bg-slate-50 rounded-xl p-4 pl-8 text-sm focus:outline-none font-bold text-lg">
             </div>
+
+            <!-- 分帳功能區塊 -->
+            <div class="mb-4">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="flex items-center text-sm font-bold text-slate-600 cursor-pointer">
+                        <input type="checkbox" v-model="newExpense.isSplit" class="w-4 h-4 mr-2 accent-warm-orange rounded">
+                        <i class="fa-solid fa-users-viewfinder mr-1 text-warm-orange"></i> AA 分帳試算
+                    </label>
+                </div>
+                
+                <div v-if="newExpense.isSplit" class="bg-orange-50 p-3 rounded-xl border border-orange-100 animate-fade-in">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-xs text-orange-800">人數</span>
+                        <div class="flex items-center bg-white rounded-lg border border-orange-200">
+                            <button @click="newExpense.splitPeople > 1 ? newExpense.splitPeople-- : null" class="w-8 h-8 flex items-center justify-center text-orange-400 hover:bg-orange-100 rounded-l-lg">-</button>
+                            <input type="number" v-model.number="newExpense.splitPeople" class="w-10 text-center text-orange-800 font-bold text-sm focus:outline-none">
+                            <button @click="newExpense.splitPeople++" class="w-8 h-8 flex items-center justify-center text-orange-400 hover:bg-orange-100 rounded-r-lg">+</button>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center border-t border-orange-200 pt-2 mt-1">
+                        <span class="text-xs text-orange-800">每人應付</span>
+                        <span class="font-bold text-lg text-orange-600">¥ {{ formatNumber(Math.ceil((newExpense.amount || 0) / newExpense.splitPeople)) }}</span>
+                    </div>
+                    <button @click="newExpense.amount = Math.ceil((newExpense.amount || 0) / newExpense.splitPeople); newExpense.isSplit = false" class="w-full mt-2 bg-white text-orange-500 text-xs py-1.5 rounded-lg border border-orange-200 hover:bg-orange-100">
+                        只記我的份 (帶入此金額)
+                    </button>
+                </div>
+            </div>
+
             <div class="flex space-x-3 mb-6">
                 <button @click="newExpense.payment='cash'" :class="newExpense.payment==='cash' ? 'bg-deep-sea-blue text-white' : 'bg-slate-100 text-slate-500'" class="flex-1 py-2 rounded-xl text-sm transition-colors">現金</button>
                 <button @click="newExpense.payment='card'" :class="newExpense.payment==='card' ? 'bg-deep-sea-blue text-white' : 'bg-slate-100 text-slate-500'" class="flex-1 py-2 rounded-xl text-sm transition-colors">信用卡</button>
@@ -519,11 +571,14 @@
             const currentTab = ref('itinerary');
             const selectedDateIndex = ref(0);
             
-            // 匯率
-            const EXCHANGE_RATE = 0.22;
+            // 匯率 (改為 ref 以便編輯)
+            const exchangeRate = ref(0.22);
             const currencyInput = ref(50000);
             const currencyResult = ref(0);
-            const calculateCurrency = () => currencyResult.value = Math.round(currencyInput.value * EXCHANGE_RATE);
+            const calculateCurrency = () => currencyResult.value = Math.round(currencyInput.value * exchangeRate.value);
+
+            // 快速分帳
+            const quickSplit = ref({ amount: null, people: 2 });
 
             // Modals
             const showItineraryModal = ref(false);
@@ -648,7 +703,17 @@
             // 新增資料狀態
             const newItinerary = ref({ id: null, category: 'sightseeing', name: '', startTime: '', address: '', price: '', note: '' });
             const newShoppingItem = ref({ name: '', qty: 1, image: null });
-            const newExpense = ref({ name: '', amount: null, category: 'food', date: '2026-03-06', payment: 'cash' });
+            
+            // 花費狀態 (包含分帳欄位)
+            const newExpense = ref({ 
+                name: '', 
+                amount: null, 
+                category: 'food', 
+                date: '2026-03-06', 
+                payment: 'cash',
+                isSplit: false,
+                splitPeople: 2
+            });
 
             // Computed
             const currentItinerary = computed(() => {
@@ -656,7 +721,9 @@
                 return itineraryData.value[selectedDateIndex.value];
             });
             const totalExpensesJPY = computed(() => expenses.value.reduce((sum, e) => sum + (e.amount || 0), 0));
-            const totalExpensesTWD = computed(() => Math.round(totalExpensesJPY.value * EXCHANGE_RATE));
+            
+            // 全域總金額 (連動可編輯匯率)
+            const totalExpensesTWD = computed(() => Math.round(totalExpensesJPY.value * exchangeRate.value));
 
             // Methods
             const formatNumber = (num) => num ? num.toLocaleString() : '0';
@@ -668,7 +735,10 @@
             const handleAddClick = () => {
                 if (currentTab.value === 'itinerary') { isEditMode.value = false; newItinerary.value = { category: 'sightseeing' }; showItineraryModal.value = true; }
                 else if (currentTab.value === 'shopping') { newShoppingItem.value = { name: '', qty: 1 }; showShoppingModal.value = true; }
-                else if (currentTab.value === 'expenses') { newExpense.value = { category: 'food', payment: 'cash' }; showExpenseModal.value = true; }
+                else if (currentTab.value === 'expenses') { 
+                    newExpense.value = { category: 'food', payment: 'cash', date: '2026-03-06', isSplit: false, splitPeople: 2 }; 
+                    showExpenseModal.value = true; 
+                }
             };
 
             const saveItineraryItem = () => {
@@ -681,12 +751,6 @@
                     itineraryData.value[selectedDateIndex.value].push(newItem);
                     itineraryData.value[selectedDateIndex.value].sort((a,b) => (a.startTime > b.startTime) ? 1 : -1);
                 }
-                showItineraryModal.value = false;
-            };
-
-            const removeItineraryItem = () => {
-                const idx = currentItinerary.value.findIndex(i => i.id === newItinerary.value.id);
-                if(idx !== -1) itineraryData.value[selectedDateIndex.value].splice(idx, 1);
                 showItineraryModal.value = false;
             };
 
@@ -722,12 +786,13 @@
             return {
                 currentTab, dates, selectedDateIndex, hotels, mustBuyList, shoppingList, expenses,
                 itineraryData, currentItinerary, totalExpensesJPY, totalExpensesTWD,
-                currencyInput, currencyResult, calculateCurrency, formatNumber,
+                currencyInput, currencyResult, calculateCurrency, formatNumber, exchangeRate, // 匯出 exchangeRate
                 getCategoryColor, getCategoryIcon, getWeatherIcon, openMap,
                 showItineraryModal, showShoppingModal, showExpenseModal, isEditMode,
                 newItinerary, newShoppingItem, newExpense,
-                handleAddClick, saveItineraryItem, removeItineraryItem, editItem,
-                addShoppingItem, removeShoppingItem, handleImageUpload, addExpense, removeExpense
+                handleAddClick, saveItineraryItem, editItem,
+                addShoppingItem, removeShoppingItem, handleImageUpload, addExpense, removeExpense,
+                quickSplit
             }
         }
     }).mount('#app');
