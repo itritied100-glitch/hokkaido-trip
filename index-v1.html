@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Hokkaido Trip 2026 (莫蘭迪風格版)</title>
+    
+    <!-- Tab Icon -->
+    <link rel="icon" type="image/jpeg" href="./image_ec3041.jpg">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Vue.js 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // 您提供的專屬色票
+                        'jp-slate': '#7A848D',    // 主色：深藍灰 (取代原本的 deep-sea-blue)
+                        'jp-rust': '#976666',     // 強調：鐵鏽紅 (取代原本的 warm-orange/red)
+                        'jp-sage': '#A9B7AA',     // 輔助：鼠尾草綠 (正向/景點)
+                        'jp-rose': '#C09D9B',     // 裝飾：玫瑰褐
+                        'jp-sand': '#DBD2C9',     // 裝飾：暖沙色
+                        'jp-beige': '#DBD4C6',    // 背景：淺米
+                        'jp-mist': '#CCD2CC',     // 背景：薄霧灰
+                        'jp-gray-1': '#999EA2',   // 文字：冷灰
+                        'jp-gray-2': '#93939B',   // 文字：石板灰
+                        'jp-silver': '#BEBEBE',   // 邊框：銀灰
+                        
+                        // 功能性映射 (保持邏輯但換色)
+                        'balance-pos': '#A9B7AA', // 綠色改為 Sage
+                        'balance-neg': '#976666', // 紅色改為 Rust
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        
+        body { 
+            background-color: #F2F4F6; /* 極淡的灰，襯托莫蘭迪色 */
+            -webkit-tap-highlight-color: transparent; 
+            font-family: 'Noto Sans TC', sans-serif; 
+            color: #7A848D; 
+        }
+
+        .app-container { 
+            max-width: 480px; 
+            margin: 0 auto; 
+            min-height: 100vh; 
+            background-color: #ffffff; 
+            box-shadow: 0 0 40px rgba(122, 132, 141, 0.15); 
+            position: relative; 
+            padding-bottom: 90px; 
+        }
+
+        /* 頁首設計 (保持不變，僅微調陰影色) */
+        .header-bg { 
+            background-color: #ffffff; 
+            padding: 0; 
+            position: relative; 
+            overflow: hidden; 
+            box-shadow: 0 4px 20px rgba(122, 132, 141, 0.2); 
+            border-bottom-left-radius: 35px; 
+            border-bottom-right-radius: 35px; 
+            z-index: 10; 
+            height: 280px; 
+        }
+        
+        .header-image-container { width: 100%; height: 100%; position: relative; }
+        .header-image-container img { width: 100%; height: 100%; object-fit: cover; object-position: center bottom; }
+        
+        /* 雪花特效 (保持不變) */
+        .snow-layer { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><circle cx="50" cy="50" r="1" fill="%23fff" opacity="0.8"/><circle cx="20" cy="80" r="0.5" fill="%23fff" opacity="0.6"/><circle cx="70" cy="30" r="1.5" fill="%23fff" opacity="0.9"/></svg>'); 
+            background-size: 100px 100px; opacity: 0.8; animation: snowfall 10s linear infinite; 
+            z-index: 5; pointer-events: none; 
+        }
+        @keyframes snowfall { to { background-position: 100px 100px; } }
+        
+        /* 懸浮 Tab 按鈕 (更新配色) */
+        .side-tab-bar { position: absolute; bottom: 20px; right: 20px; z-index: 30; display: flex; gap: 10px; }
+        .tab-button { 
+            width: 45px; height: 45px; border-radius: 50%; display: flex; align-items: center; justify-content: center; 
+            font-size: 1.2rem; 
+            box-shadow: 0 4px 12px rgba(122, 132, 141, 0.3); 
+            transition: all 0.3s ease; 
+            background-color: rgba(255, 255, 255, 0.95); 
+            color: #BEBEBE; /* jp-silver */
+            border: 2px solid white; 
+        }
+        .tab-button.active { 
+            background-color: #7A848D; /* jp-slate */
+            color: #ffffff; 
+            transform: scale(1.1) translateY(-5px); 
+            box-shadow: 0 8px 20px rgba(122, 132, 141, 0.5); 
+            border-color: #7A848D; 
+        }
+
+        .app-main { padding-top: 20px; position: relative; z-index: 5; }
+        
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 卡片陰影優化 (更柔和) */
+        .card-shadow { 
+            box-shadow: 0 4px 20px rgba(153, 158, 162, 0.15); 
+            transition: transform 0.2s ease; 
+            border: 1px solid #F0F2F5;
+        }
+
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .note-content { max-height: 2.5rem; overflow: hidden; transition: max-height 0.3s ease-out; }
+        .note-content.expanded { max-height: 500px; }
+
+        /* 日期選擇器置頂背景 */
+        .date-selector-sticky { 
+            background-color: rgba(255,255,255,0.95); 
+            backdrop-filter: blur(8px); 
+            border-bottom: 1px solid #E5E7EB; 
+            z-index: 20; 
+            top: 0; 
+            padding-top: 10px; 
+            padding-bottom: 10px; 
+        }
+
+        .banner-text-overlay { background: linear-gradient(to top, rgba(122, 132, 141, 0.7) 0%, rgba(0,0,0,0) 100%); position: absolute; bottom: 0; left: 0; width: 100%; height: 60%; border-bottom-left-radius: 35px; border-bottom-right-radius: 35px; pointer-events: none; }
+        
+        /* Checkbox 自訂色 */
+        .member-checkbox:checked + div { background-color: #7A848D; color: white; border-color: #7A848D; }
+        
+        /* 同步狀態 */
+        .sync-status { position: absolute; top: 20px; right: 20px; z-index: 50; font-size: 0.7rem; padding: 4px 10px; border-radius: 20px; background: rgba(122, 132, 141, 0.6); color: white; backdrop-filter: blur(4px); display: flex; align-items: center; gap: 6px; letter-spacing: 0.5px; }
+        .sync-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #976666; }
+        .sync-dot.online { background-color: #A9B7AA; box-shadow: 0 0 5px #A9B7AA; }
+        .sync-dot.busy { background-color: #DBD4C6; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+    </style>
+</head>
+<body class="text-jp-slate">
+
+<div id="app" class="app-container">
+
+    <!-- Sync Status -->
+    <div class="sync-status">
+        <div class="sync-dot" :class="syncStatusClass"></div>
+        <span>{{ statusMessage }}</span>
+    </div>
+
+    <!-- Header -->
+    <div class="header-bg">
+        <div class="header-image-container">
+            <img src="./banner.jpg" 
+                 onerror="this.src='https://images.unsplash.com/photo-1548578709-32269a838573?q=80&w=1920&auto=format&fit=crop'"
+                 alt="北海道家族旅行">
+            <div class="banner-text-overlay"></div>
+            <div class="absolute bottom-6 left-6 text-white z-20">
+                <h1 class="text-3xl font-bold tracking-widest drop-shadow-md text-white">HOKKAIDO</h1>
+                <p class="text-sm font-light tracking-wider opacity-90 text-jp-silver">2026.03.06 - 03.14</p>
+            </div>
+        </div>
+        <div class="snow-layer"></div> 
+        <div class="side-tab-bar">
+            <button @click="currentTab = 'itinerary'" :class="{'active': currentTab === 'itinerary'}" class="tab-button"><i class="fa-solid fa-map-location-dot"></i></button>
+            <button @click="currentTab = 'info'" :class="{'active': currentTab === 'info'}" class="tab-button"><i class="fa-solid fa-circle-info"></i></button>
+            <button @click="currentTab = 'shopping'" :class="{'active': currentTab === 'shopping'}" class="tab-button"><i class="fa-solid fa-basket-shopping"></i></button>
+            <button @click="currentTab = 'expenses'" :class="{'active': currentTab === 'expenses'}" class="tab-button"><i class="fa-solid fa-coins"></i></button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="p-4 app-main">
+        
+        <!-- Tab 1: 行程 -->
+        <div v-if="currentTab === 'itinerary'" class="animate-fade-in">
+            <div class="flex overflow-x-auto hide-scrollbar space-x-3 mb-4 snap-x px-1 sticky date-selector-sticky -mx-4 px-4 pb-2">
+                <div v-for="(day, index) in dates" :key="index" @click="selectedDateIndex = index"
+                     class="snap-center flex-shrink-0 w-[60px] h-[70px] rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all duration-300 border shadow-sm"
+                     :class="selectedDateIndex === index ? 'bg-jp-slate text-white border-jp-slate shadow-lg scale-105' : 'bg-white text-jp-gray-1 border-transparent hover:bg-jp-mist/20'">
+                    <span class="text-sm font-bold uppercase">{{ day.weekday }}</span> 
+                    <span class="text-xs font-medium opacity-80">{{ day.date }}</span> 
+                </div>
+            </div>
+
+            <div class="mb-5 bg-white border border-jp-mist/50 rounded-2xl p-4 flex justify-between items-center shadow-sm">
+                <div class="flex items-center text-jp-slate gap-3">
+                    <i :class="getWeatherIcon(dates[selectedDateIndex].weather)" class="text-4xl text-jp-gray-1"></i>
+                    <div>
+                        <div class="text-2xl font-bold text-jp-slate">{{ dates[selectedDateIndex].temp }}</div>
+                        <div class="text-xs text-jp-gray-2">{{ dates[selectedDateIndex].area }}</div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span v-if="dates[selectedDateIndex].transport" class="inline-block bg-jp-mist/20 text-jp-slate text-xs font-bold px-3 py-1.5 rounded-full">
+                        <i class="fa-solid fa-van-shuttle mr-1 text-jp-rust"></i> {{ dates[selectedDateIndex].transport }}
+                    </span>
+                </div>
+            </div>
+
+            <div class="space-y-4 pb-20">
+                <div v-for="(item, idx) in currentItinerary" :key="item.id" class="relative pl-4">
+                    <div v-if="idx < currentItinerary.length - 1" class="absolute left-[23px] top-8 bottom-[-16px] w-0.5 bg-jp-silver/50 z-0"></div>
+                    <div class="bg-white rounded-2xl p-4 card-shadow relative z-10">
+                        <div class="flex items-start gap-3">
+                            <div class="flex flex-col items-center min-w-[50px]">
+                                <div class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md text-sm mb-1" :class="getCategoryColor(item.category)">
+                                    <i :class="getCategoryIcon(item.category)"></i>
+                                </div>
+                                <span class="text-xs font-bold text-jp-gray-1">{{ item.startTime }}</span>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex justify-between items-start">
+                                    <h3 class="font-bold text-jp-slate text-lg leading-tight truncate pr-2">{{ item.name }}</h3>
+                                    <div class="flex gap-2 shrink-0">
+                                        <button @click.stop="openMap(item.address || item.name)" class="w-7 h-7 bg-jp-mist/30 text-jp-slate rounded-full flex items-center justify-center text-xs hover:bg-jp-slate hover:text-white transition-colors"><i class="fa-solid fa-location-arrow"></i></button>
+                                        <button @click.stop="editItem(item)" class="w-7 h-7 bg-gray-100 text-jp-gray-1 rounded-full flex items-center justify-center text-xs hover:bg-gray-200"><i class="fa-solid fa-pencil"></i></button>
+                                    </div>
+                                </div>
+                                <div class="text-sm text-jp-gray-2 mt-2 space-y-1">
+                                    <p v-if="item.price" class="flex items-center"><i class="fa-solid fa-ticket w-4 text-center mr-1 text-jp-rose"></i> {{ item.price }}</p>
+                                    <p v-if="item.address" class="flex items-center truncate"><i class="fa-solid fa-map-pin w-4 text-center mr-1 text-jp-rose"></i> {{ item.address }}</p>
+                                </div>
+                                <div v-if="item.note" class="mt-3 bg-jp-mist/10 p-2.5 rounded-xl border border-jp-mist/20 text-xs text-jp-gray-2">
+                                    <div class="note-content" :class="{'expanded': item.isNoteExpanded}">{{ item.note }}</div>
+                                    <button v-if="item.note.length > 40" @click="item.isNoteExpanded = !item.isNoteExpanded" class="text-jp-slate font-bold mt-1">{{ item.isNoteExpanded ? '收合' : '展開...' }}</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-if="currentItinerary.length === 0" class="text-center py-10 text-jp-silver"><p>本日暫無行程，點擊右下角 + 新增</p></div>
+            </div>
+        </div>
+
+        <!-- Tab 2: 資訊 -->
+        <div v-if="currentTab === 'info'" class="animate-fade-in space-y-5 pb-20">
+            <div class="bg-gradient-to-br from-jp-slate to-jp-gray-2 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                <div class="flex justify-between items-center mb-4 relative z-10">
+                    <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
+                    <div class="flex items-center bg-white/10 rounded-lg px-2 py-1 border border-white/10">
+                        <span class="text-xs text-jp-sand mr-1">匯率:</span>
+                        <input type="number" v-model="exchangeRate" @change="triggerSync" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
+                    </div>
+                </div>
+                <div class="flex items-center justify-between gap-4 relative z-10">
+                    <div class="flex-1">
+                        <label class="text-[10px] text-jp-sand block mb-1">JPY</label>
+                        <input type="number" v-model="currencyInput" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white font-bold text-lg focus:outline-none">
+                    </div>
+                    <i class="fa-solid fa-arrow-right-arrow-left text-jp-sand mt-4"></i>
+                    <div class="flex-1">
+                        <label class="text-[10px] text-jp-sand block mb-1">TWD</label>
+                        <div class="w-full bg-white/5 rounded-xl px-3 py-2 text-white text-lg font-bold border border-transparent">{{ currencyResult }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-3xl p-6 card-shadow">
+                <h3 class="font-bold text-jp-slate mb-4 border-b border-jp-mist/30 pb-2"><i class="fa-solid fa-hotel text-jp-rose mr-2"></i> 住宿清單</h3>
+                <ul class="space-y-4">
+                    <li v-for="hotel in hotels" class="group">
+                        <div class="flex justify-between items-start">
+                            <div><span class="font-bold text-jp-slate block">{{ hotel.name }}</span><span class="text-xs bg-jp-mist/30 text-jp-slate px-2 py-0.5 rounded-md mt-1 inline-block">{{ hotel.date }}</span></div>
+                            <button @click="openMap(hotel.name)" class="w-8 h-8 rounded-full bg-jp-mist/20 text-jp-slate flex items-center justify-center hover:bg-jp-slate hover:text-white transition-colors"><i class="fa-solid fa-location-arrow text-xs"></i></button>
+                        </div>
+                        <p class="text-xs text-jp-gray-1 mt-1"><i class="fa-solid fa-map-pin mr-1"></i> {{ hotel.address }}</p>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="bg-white rounded-3xl p-6 card-shadow relative">
+                <div class="flex justify-between items-center mb-4 border-b border-jp-mist/30 pb-2">
+                    <h3 class="font-bold text-jp-slate"><i class="fa-solid fa-thumbs-up text-jp-rust mr-2"></i> 必買推薦</h3>
+                    <button @click="isMustBuyEditMode = !isMustBuyEditMode" class="text-xs px-2 py-1 rounded-full transition-colors" :class="isMustBuyEditMode ? 'bg-jp-slate text-white' : 'bg-jp-mist/30 text-jp-slate'">
+                        <i class="fa-solid fa-pen-to-square mr-1"></i> {{ isMustBuyEditMode ? '完成' : '編輯' }}
+                    </button>
+                </div>
+                
+                <div v-for="(region, rIdx) in mustBuyList" :key="rIdx" class="mb-5 last:mb-0 group/region">
+                    <div class="flex items-center mb-2">
+                        <span class="w-1.5 h-4 bg-jp-rose rounded-r mr-2"></span>
+                        <input v-if="isMustBuyEditMode" v-model="region.area" @change="triggerSync" class="font-bold text-sm text-jp-gray-2 bg-gray-50 border-b border-jp-silver w-full focus:outline-none">
+                        <h4 v-else class="font-bold text-sm text-jp-gray-2">{{ region.area }}</h4>
+                        <button v-if="isMustBuyEditMode" @click="removeRegion(rIdx)" class="ml-2 text-jp-silver hover:text-jp-rust text-xs"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <span v-for="(item, iIdx) in region.items" :key="iIdx" class="bg-jp-beige/50 text-jp-gray-2 text-xs px-3 py-1.5 rounded-lg border border-jp-beige flex items-center">
+                            {{ item }}
+                            <button v-if="isMustBuyEditMode" @click="removeMustBuyItem(rIdx, iIdx)" class="ml-2 text-jp-silver hover:text-jp-rust font-bold">×</button>
+                        </span>
+                        <div v-if="isMustBuyEditMode" class="flex items-center">
+                            <input @keyup.enter="addMustBuyItem(rIdx, $event)" placeholder="輸入後Enter" class="text-xs bg-white border border-jp-silver rounded-lg px-2 py-1.5 w-24 outline-none focus:border-jp-slate">
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="isMustBuyEditMode" class="mt-4 pt-4 border-t border-jp-mist/30">
+                    <div class="flex items-center gap-2">
+                        <input v-model="newRegionName" placeholder="新區域名稱" class="flex-1 text-sm bg-gray-50 border border-jp-silver rounded-lg px-3 py-2 outline-none focus:border-jp-slate">
+                        <button @click="addRegion" class="bg-jp-slate text-white text-xs px-3 py-2 rounded-lg font-bold">新增</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: 購物清單 -->
+        <div v-if="currentTab === 'shopping'" class="animate-fade-in pb-20">
+            <button @click="showShoppingModal = true; resetShoppingForm()" class="w-full bg-white border-2 border-dashed border-jp-silver rounded-2xl p-4 mb-4 text-jp-gray-1 font-bold hover:bg-jp-beige/20 hover:border-jp-slate transition-colors flex items-center justify-center">
+                <i class="fa-solid fa-plus mr-2"></i> 新增待買商品
+            </button>
+
+            <div class="space-y-3">
+                <div v-for="(item, idx) in shoppingList" :key="idx" class="flex items-center bg-white p-3 rounded-2xl card-shadow transition-all hover:translate-x-1">
+                    <div class="mr-3 pl-1">
+                        <input type="checkbox" v-model="item.checked" @change="triggerSync" class="w-5 h-5 accent-jp-slate rounded border-jp-silver cursor-pointer">
+                    </div>
+                    <div class="w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm shrink-0 shadow-sm"
+                         :class="getShoppingCategoryColor(item.category)">
+                        <i :class="getShoppingCategoryIcon(item.category)"></i>
+                    </div>
+                    <div class="flex-1 ml-3 overflow-hidden">
+                        <div class="flex items-center">
+                            <p class="font-bold text-sm text-jp-slate truncate" :class="{'line-through text-jp-silver': item.checked}">{{ item.name }}</p>
+                            <span v-if="item.buyer" class="ml-2 text-[10px] bg-jp-mist/20 text-jp-slate px-1.5 py-0.5 rounded border border-jp-mist/30 flex items-center shrink-0">
+                                <i class="fa-solid fa-user mr-1 text-[8px]"></i>{{ item.buyer }}
+                            </span>
+                        </div>
+                        <p class="text-xs text-jp-gray-1 mt-0.5 flex items-center">
+                            <span class="font-mono text-jp-slate font-bold mr-2">x{{ item.qty }}</span>
+                            <span class="text-[10px] bg-jp-beige/40 px-1.5 py-0.5 rounded text-jp-gray-2">{{ getShoppingCategoryName(item.category) }}</span>
+                        </p>
+                    </div>
+                    <button @click="removeShoppingItem(idx)" class="w-8 h-8 rounded-full flex items-center justify-center text-jp-silver hover:text-jp-rust hover:bg-jp-rose/10 transition-colors ml-2">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+                <div v-if="shoppingList.length === 0" class="text-center py-10 text-jp-silver text-sm">暫無購物清單</div>
+            </div>
+        </div>
+
+        <!-- Tab 4: 花費 -->
+        <div v-if="currentTab === 'expenses'" class="animate-fade-in pb-20">
+            <!-- 總支出 -->
+            <div class="bg-gradient-to-r from-jp-slate to-jp-gray-2 text-white rounded-3xl p-6 mb-6 relative overflow-hidden shadow-lg">
+                <div class="absolute -right-10 -top-10 bg-white/10 w-48 h-48 rounded-full blur-3xl"></div>
+                
+                <!-- Add Button -->
+                <button @click="handleAddClick" class="absolute top-4 right-4 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white hover:bg-white/30 transition-colors z-20">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+
+                <div class="flex justify-between items-end relative z-10">
+                    <div>
+                        <p class="text-xs text-jp-sand mb-1">本次行程總支出</p>
+                        <h2 class="text-3xl font-bold tracking-tight">¥ {{ formatNumber(totalExpensesJPY) }}</h2>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-lg font-bold text-jp-sand">NT$ {{ formatNumber(totalExpensesTWD) }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分帳結算 -->
+            <div class="mb-6">
+                <h3 class="font-bold text-jp-slate mb-3 flex items-center text-sm px-1"><i class="fa-solid fa-scale-balanced text-jp-rose mr-2"></i> 分帳結算</h3>
+                
+                <!-- Horizontal Selector -->
+                <div class="flex overflow-x-auto hide-scrollbar gap-3 px-1 pb-2">
+                    <div v-for="member in balanceSheet" :key="member.name" 
+                         @click="selectedMemberName = member.name"
+                         class="flex flex-col items-center min-w-[60px] cursor-pointer transition-all duration-300"
+                         :class="selectedMemberName === member.name ? 'scale-110 opacity-100' : 'opacity-60 scale-100'">
+                        <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg mb-1 shadow-md transition-colors border-2 border-white"
+                             :class="member.balance >= 0 ? 'bg-jp-sage' : 'bg-jp-rust'">
+                            {{ member.name.charAt(0) }}
+                        </div>
+                        <span class="text-xs font-bold text-jp-gray-2 whitespace-nowrap">{{ member.name }}</span>
+                    </div>
+                </div>
+
+                <!-- Detail Card -->
+                <div v-if="selectedMemberData" class="bg-white rounded-3xl p-5 mt-2 shadow-sm border border-jp-mist/30 animate-fade-in">
+                    <div class="flex justify-between items-center mb-4 border-b border-jp-mist/30 pb-3">
+                        <h3 class="font-bold text-jp-slate text-lg">{{ selectedMemberData.name }} 的帳務</h3>
+                        <div class="text-right">
+                            <span class="block font-bold text-lg" :class="selectedMemberData.balance >= 0 ? 'text-jp-sage' : 'text-jp-rust'">
+                                {{ selectedMemberData.balance >= 0 ? '應收' : '應付' }} ¥{{ formatNumber(Math.abs(selectedMemberData.balance)) }}
+                            </span>
+                            <span class="text-xs opacity-60 block" :class="selectedMemberData.balanceTWD >= 0 ? 'text-jp-sage' : 'text-jp-rust'">
+                                ≈ NT$ {{ formatNumber(Math.abs(selectedMemberData.balanceTWD)) }}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Charts -->
+                    <div class="mb-5">
+                        <div class="flex justify-between text-xs text-jp-gray-1 mb-1">
+                            <span>收支對比 (JPY)</span>
+                        </div>
+                        <div class="w-full h-3 bg-jp-mist/20 rounded-full flex overflow-hidden">
+                            <!-- Share -->
+                            <div class="bg-jp-rose h-full" :style="{ width: (selectedMemberData.share / (Math.max(selectedMemberData.share, selectedMemberData.paid) * 1.2 || 1) * 100) + '%' }"></div>
+                        </div>
+                        <div class="flex justify-between text-[10px] mt-1 text-jp-gray-2">
+                            <span>應付 ¥{{ formatNumber(Math.round(selectedMemberData.share)) }}</span>
+                            <span>已付 ¥{{ formatNumber(selectedMemberData.paid) }}</span>
+                        </div>
+                        <div class="w-full h-3 bg-jp-mist/20 rounded-full flex overflow-hidden mt-1">
+                            <!-- Paid -->
+                            <div class="bg-jp-slate h-full" :style="{ width: (selectedMemberData.paid / (Math.max(selectedMemberData.share, selectedMemberData.paid) * 1.2 || 1) * 100) + '%' }"></div>
+                        </div>
+                    </div>
+
+                    <div v-if="selectedMemberData.categoryBreakdown" class="mb-2">
+                         <div class="text-xs text-jp-gray-1 mb-1">消費類別 (JPY)</div>
+                         <div class="w-full h-5 rounded-full flex overflow-hidden shadow-inner bg-jp-mist/20">
+                             <div v-for="(amount, cat) in selectedMemberData.categoryBreakdown" :key="cat"
+                                  :class="getCategoryColor(cat)"
+                                  :style="{ width: (amount / (selectedMemberData.share || 1) * 100) + '%' }"
+                                  class="h-full"></div>
+                         </div>
+                         <div class="flex flex-wrap gap-2 mt-2">
+                             <div v-for="(amount, cat) in selectedMemberData.categoryBreakdown" :key="cat" 
+                                  v-show="amount > 0"
+                                  class="flex items-center text-[9px] text-jp-gray-2">
+                                 <div class="w-2 h-2 rounded-full mr-1" :class="getCategoryColor(cat)"></div>
+                                 {{ formatNumber(Math.round(amount)) }}
+                             </div>
+                         </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-jp-mist/30">
+                        <div class="bg-jp-beige/20 p-3 rounded-xl border border-jp-beige/50">
+                            <span class="text-xs text-jp-gray-1 block mb-1">消費 (應付)</span>
+                            <span class="block font-bold text-jp-slate text-lg">¥ {{ formatNumber(Math.round(selectedMemberData.share)) }}</span>
+                            <span class="block text-xs text-jp-gray-2 mt-0.5">NT$ {{ formatNumber(Math.round(selectedMemberData.shareTWD)) }}</span>
+                        </div>
+                        <div class="bg-jp-beige/20 p-3 rounded-xl border border-jp-beige/50">
+                            <span class="text-xs text-jp-gray-1 block mb-1">墊付 (已付)</span>
+                            <span class="block font-bold text-jp-slate text-lg">¥ {{ formatNumber(selectedMemberData.paid) }}</span>
+                            <span class="block text-xs text-jp-gray-2 mt-0.5">NT$ {{ formatNumber(selectedMemberData.paidTWD) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 最佳還款 -->
+            <div v-if="settlements.length > 0" class="bg-gradient-to-br from-jp-beige/40 to-jp-sage/10 rounded-3xl p-5 mb-6 shadow-sm border border-jp-sage/20">
+                <h3 class="font-bold text-jp-slate mb-3 flex items-center text-sm"><i class="fa-solid fa-hand-holding-dollar mr-2 text-jp-sage"></i> 建議還款方案</h3>
+                <div class="space-y-2">
+                    <div v-for="(txn, idx) in settlements" :key="idx" class="flex items-center justify-between bg-white/80 p-2.5 rounded-xl border border-white">
+                        <div class="flex items-center text-sm text-jp-gray-2">
+                            <span class="font-bold text-jp-slate">{{ txn.from }}</span>
+                            <i class="fa-solid fa-arrow-right-long mx-2 text-jp-silver text-xs"></i>
+                            <span class="font-bold text-jp-slate">{{ txn.to }}</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="block font-bold text-jp-sage text-sm font-mono">¥{{ formatNumber(txn.amount) }}</span>
+                            <span class="block text-[9px] text-jp-gray-1">≈ NT$ {{ formatNumber(Math.round(txn.amountTWD)) }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-t-3xl min-h-[400px] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] -mx-4 px-8">
+                <h3 class="font-bold text-jp-slate mb-5 flex items-center"><i class="fa-solid fa-receipt text-jp-gray-1 mr-2"></i>支出紀錄</h3>
+                <div v-if="expenses.length === 0" class="text-center text-jp-silver py-10">尚無紀錄</div>
+                <div v-else class="space-y-4">
+                    <div v-for="(exp, idx) in expenses" :key="idx" class="flex items-start justify-between border-b border-jp-mist/30 pb-3 last:border-0">
+                        <div class="flex items-start">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs mr-3 shadow-sm shrink-0" :class="getCategoryColor(exp.category)">
+                                <i :class="getCategoryIcon(exp.category)"></i>
+                            </div>
+                            <div>
+                                <p class="font-bold text-jp-slate text-sm">{{ exp.name }}</p>
+                                <p class="text-[10px] text-jp-gray-1 mt-0.5">
+                                    <span v-if="exp.category === 'transfer'" class="text-jp-sage font-bold">轉帳還款</span>
+                                    <span v-else>
+                                        <span class="bg-jp-mist/20 px-1.5 py-0.5 rounded text-jp-gray-2 mr-1">{{ exp.payer }}</span>
+                                        <span v-if="exp.involved && exp.involved.length < members.length" class="text-jp-rust">({{ exp.involved.length }}人)</span>
+                                        <span v-else>全體</span>
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <p class="font-bold text-jp-slate text-sm">¥{{ formatNumber(exp.amount) }}</p>
+                            <p class="text-[10px] text-jp-gray-1">NT$ {{ formatNumber(exp.amountTWD) }}</p>
+                            <button @click="removeExpense(idx)" class="text-[10px] text-jp-silver hover:text-jp-rust mt-1 block w-full text-right">刪除</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FAB -->
+    <button v-if="currentTab !== 'info' && currentTab !== 'expenses'" @click="handleAddClick" class="fixed bottom-24 right-6 w-14 h-14 bg-jp-rust rounded-full shadow-[0_4px_15px_rgba(151,102,102,0.5)] text-white text-2xl flex items-center justify-center hover:scale-110 transition-transform z-40">
+        <i class="fa-solid fa-plus"></i>
+    </button>
+
+    <!-- 1. 行程 Modal -->
+    <div v-if="showItineraryModal" class="fixed inset-0 bg-jp-slate/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 class="font-bold text-lg mb-4 text-center text-jp-slate">{{ isEditMode ? '編輯行程' : '新增行程' }}</h3>
+            <div class="space-y-3">
+                <select v-model="newItinerary.category" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm outline-none text-jp-slate">
+                    <option value="sightseeing">景點</option>
+                    <option value="food">飲食</option>
+                    <option value="shopping">購物</option>
+                    <option value="accommodation">住宿</option>
+                    <option value="transport">交通</option>
+                </select>
+                <input v-model="newItinerary.name" placeholder="名稱" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-jp-slate text-jp-slate">
+                <input v-model="newItinerary.startTime" type="time" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm outline-none text-jp-slate">
+                <input v-model="newItinerary.address" placeholder="地址" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm outline-none text-jp-slate">
+                <input v-model="newItinerary.price" placeholder="費用" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm outline-none text-jp-slate">
+                <textarea v-model="newItinerary.note" placeholder="備註" rows="3" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm outline-none text-jp-slate"></textarea>
+            </div>
+            <div class="flex space-x-3 mt-6">
+                <button @click="showItineraryModal = false" class="flex-1 py-3 rounded-xl bg-jp-mist/30 text-jp-gray-2 font-bold text-sm">取消</button>
+                <button @click="saveItineraryItem" class="flex-1 py-3 rounded-xl bg-jp-slate text-white font-bold text-sm shadow-md">{{ isEditMode ? '更新' : '新增' }}</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 購物 Modal -->
+    <div v-if="showShoppingModal" class="fixed inset-0 bg-jp-slate/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
+            <h3 class="font-bold text-lg mb-4 text-center text-jp-slate">新增購物清單</h3>
+            <div class="grid grid-cols-3 gap-3 mb-4">
+                <div class="col-span-2">
+                    <input v-model="newShoppingItem.name" type="text" placeholder="商品名稱" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-jp-slate text-jp-slate">
+                </div>
+                <div>
+                    <input v-model="newShoppingItem.qty" type="number" placeholder="數量" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm focus:outline-none text-jp-slate">
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-jp-gray-1 mb-2 pl-1">指定購買人</label>
+                <div class="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+                    <button v-for="m in members" :key="m"
+                            @click="newShoppingItem.buyer = m"
+                            :class="newShoppingItem.buyer === m ? 'bg-jp-slate text-white shadow-md' : 'bg-jp-mist/20 text-jp-gray-2 border border-jp-mist/30'"
+                            class="whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-all">
+                        {{ m }}
+                    </button>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-jp-gray-1 mb-2 pl-1">商品分類</label>
+                <div class="grid grid-cols-3 gap-2">
+                    <button v-for="cat in shoppingCategories" :key="cat.id" 
+                            @click="newShoppingItem.category = cat.id"
+                            :class="newShoppingItem.category === cat.id ? 'bg-jp-slate text-white shadow-md' : 'bg-jp-mist/20 text-jp-gray-2 hover:bg-jp-mist/30'"
+                            class="py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center">
+                        <i :class="cat.icon" class="mr-1.5"></i> {{ cat.name }}
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex space-x-3">
+                <button @click="showShoppingModal = false" class="flex-1 py-3 rounded-xl bg-jp-mist/30 text-jp-gray-2 font-bold text-sm">取消</button>
+                <button @click="addShoppingItem" class="flex-1 py-3 rounded-xl bg-jp-slate text-white font-bold text-sm shadow-md">新增</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 新增花費 Modal -->
+    <div v-if="showExpenseModal" class="fixed inset-0 bg-jp-slate/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl max-h-[95vh] overflow-y-auto">
+            
+            <!-- Tab -->
+            <div class="flex mb-5 bg-jp-mist/20 p-1 rounded-xl">
+                <button @click="newExpense.type = 'expense'" :class="newExpense.type === 'expense' ? 'bg-white shadow text-jp-slate' : 'text-jp-gray-1'" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all">一般消費</button>
+                <button @click="newExpense.type = 'transfer'" :class="newExpense.type === 'transfer' ? 'bg-white shadow text-jp-sage' : 'text-jp-gray-1'" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all">轉帳還款</button>
+            </div>
+
+            <!-- Rate -->
+            <div class="mb-4 bg-jp-mist/10 p-3 rounded-xl border border-jp-mist/30 flex justify-between items-center">
+                <span class="text-xs text-jp-gray-1 font-bold">本筆匯率</span>
+                <div class="flex items-center">
+                    <span class="text-xs text-jp-gray-1 mr-1">1 JPY =</span>
+                    <input v-model="newExpense.customRate" @input="onRateInput" type="number" step="0.001" class="w-14 bg-white border border-jp-silver rounded px-1 py-0.5 text-sm text-right outline-none focus:border-jp-slate text-jp-slate">
+                    <span class="text-xs text-jp-gray-1 ml-1">TWD</span>
+                </div>
+            </div>
+
+            <!-- Expense Mode -->
+            <div v-if="newExpense.type === 'expense'">
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <input v-model="newExpense.date" type="date" class="bg-jp-mist/20 rounded-xl p-3 text-sm outline-none text-jp-slate">
+                    <select v-model="newExpense.category" class="bg-jp-mist/20 rounded-xl p-3 text-sm outline-none text-jp-slate">
+                        <option value="food">飲食</option>
+                        <option value="shopping">購物</option>
+                        <option value="transport">交通</option>
+                        <option value="stay">住宿</option>
+                        <option value="ticket">門票</option>
+                    </select>
+                </div>
+                <input v-model="newExpense.name" placeholder="項目名稱" class="w-full bg-jp-mist/20 rounded-xl p-4 mb-4 text-sm focus:outline-none text-jp-slate">
+                
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="relative">
+                        <span class="absolute left-3 top-3 text-jp-gray-1 font-bold text-xs">JPY</span>
+                        <input v-model.number="newExpense.amount" @input="onJPYInput" type="number" placeholder="日幣" class="w-full bg-jp-mist/20 rounded-xl p-3 pl-10 text-sm outline-none focus:ring-2 focus:ring-jp-slate text-jp-slate font-bold">
+                    </div>
+                    <div class="relative">
+                        <span class="absolute left-3 top-3 text-jp-gray-1 font-bold text-xs">TWD</span>
+                        <input v-model.number="newExpense.amountTWD" @input="onTWDInput" type="number" placeholder="台幣" class="w-full bg-jp-mist/20 rounded-xl p-3 pl-10 text-sm outline-none focus:ring-2 focus:ring-jp-slate text-jp-slate">
+                    </div>
+                </div>
+
+                <div class="mb-6 border-t border-jp-mist/30 pt-4">
+                    <label class="block text-xs font-bold text-jp-gray-1 mb-2">付款人 (誰先墊?)</label>
+                    <select v-model="newExpense.payer" class="w-full bg-jp-mist/30 text-jp-slate font-bold rounded-xl p-3 text-sm outline-none mb-4">
+                        <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
+                    </select>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="block text-xs font-bold text-jp-gray-1">分攤對象</label>
+                        <button @click="toggleSelectAll" class="text-xs text-jp-slate font-bold">{{ newExpense.involved.length === members.length ? '全取消' : '全選' }}</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <label v-for="m in members" :key="m" class="cursor-pointer relative">
+                            <input type="checkbox" :value="m" v-model="newExpense.involved" class="member-checkbox hidden">
+                            <div class="bg-jp-mist/20 border border-jp-mist/50 rounded-lg p-2 text-center text-xs text-jp-gray-2 transition-colors hover:bg-jp-mist/40">{{ m }}</div>
+                        </label>
+                    </div>
+                    <div v-if="newExpense.amount > 0 && newExpense.involved.length > 0" class="bg-jp-beige/30 rounded-xl p-3 flex justify-between items-center">
+                        <span class="text-xs text-jp-rust">每人應付</span>
+                        <span class="font-bold text-jp-rust">¥ {{ formatNumber(Math.ceil(newExpense.amount / newExpense.involved.length)) }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transfer Mode -->
+            <div v-else>
+                <div class="mb-4">
+                    <input v-model="newExpense.date" type="date" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm outline-none mb-4 text-jp-slate">
+                    
+                    <div class="flex items-center justify-between gap-2 mb-4">
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-jp-gray-1 mb-1">轉出 (還錢)</label>
+                            <select v-model="newExpense.payer" class="w-full bg-jp-rust/10 text-jp-rust font-bold rounded-xl p-3 text-sm outline-none">
+                                <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
+                            </select>
+                        </div>
+                        <i class="fa-solid fa-arrow-right text-jp-silver mt-4"></i>
+                        <div class="flex-1">
+                            <label class="block text-xs font-bold text-jp-gray-1 mb-1">轉入 (收錢)</label>
+                            <select v-model="newExpense.payee" class="w-full bg-jp-sage/20 text-jp-sage font-bold rounded-xl p-3 text-sm outline-none">
+                                <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="relative">
+                            <span class="absolute left-3 top-3 text-jp-gray-1 font-bold text-xs">JPY</span>
+                            <input v-model.number="newExpense.amount" @input="onJPYInput" type="number" placeholder="日幣" class="w-full bg-jp-mist/20 rounded-xl p-3 pl-10 text-sm outline-none focus:ring-2 focus:ring-jp-sage font-bold text-jp-sage">
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-3 top-3 text-jp-gray-1 font-bold text-xs">TWD</span>
+                            <input v-model.number="newExpense.amountTWD" @input="onTWDInput" type="number" placeholder="台幣" class="w-full bg-jp-mist/20 rounded-xl p-3 pl-10 text-sm outline-none focus:ring-2 focus:ring-jp-sage">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex space-x-3">
+                <button @click="showExpenseModal = false" class="flex-1 py-3 rounded-xl bg-jp-mist/30 text-jp-gray-2 font-bold text-sm">取消</button>
+                <button @click="addExpense" class="flex-1 py-3 rounded-xl bg-jp-rust text-white font-bold text-sm shadow-md">儲存</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { createApp, ref, computed, onMounted, watch, nextTick } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDqqag1anowaW3XPQejcYZl8lUTgE7FRWs",
+      authDomain: "hokkaido-trip-55b8f.firebaseapp.com",
+      projectId: "hokkaido-trip-55b8f",
+      storageBucket: "hokkaido-trip-55b8f.firebasestorage.app",
+      messagingSenderId: "802810791692",
+      appId: "1:802810791692:web:b161ebee4e105f5bda6b29"
+    };
+
+    let db;
+    try {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+    } catch (e) {
+        console.error("Firebase Init Failed", e);
+    }
+
+    createApp({
+        setup() {
+            const currentTab = ref('itinerary');
+            const selectedDateIndex = ref(0);
+            const isConnected = ref(false);
+            const statusMessage = ref('連線中...');
+            const exchangeRate = ref(0.22);
+            const currencyInput = ref(50000);
+            const members = ref(['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟']);
+            const selectedMemberName = ref(members.value[0]); 
+            
+            const shoppingCategories = [
+                { id: 'souvenir', name: '伴手禮', color: 'bg-jp-rose', icon: 'fa-solid fa-gift' },
+                { id: 'snack', name: '零食', color: 'bg-jp-sand', icon: 'fa-solid fa-cookie-bite' },
+                { id: 'drug', name: '藥妝', color: 'bg-jp-rust', icon: 'fa-solid fa-pump-soap' },
+                { id: 'electric', name: '電器', color: 'bg-jp-slate', icon: 'fa-solid fa-plug' },
+                { id: 'clothes', name: '服飾', color: 'bg-jp-sage', icon: 'fa-solid fa-shirt' },
+                { id: 'other', name: '其他', color: 'bg-jp-gray-1', icon: 'fa-solid fa-bag-shopping' }
+            ];
+
+            const shoppingList = ref([]);
+            const expenses = ref([]);
+            const itineraryData = ref([]);
+            const mustBuyList = ref([]);
+
+            const showItineraryModal = ref(false);
+            const showShoppingModal = ref(false);
+            const showExpenseModal = ref(false);
+            const isEditMode = ref(false);
+            const isMustBuyEditMode = ref(false);
+            const newRegionName = ref('');
+            const isRemoteUpdate = ref(false);
+
+            const newItinerary = ref({ id: null, category: 'sightseeing', name: '', startTime: '', address: '', price: '', note: '' });
+            const newShoppingItem = ref({ name: '', qty: 1, category: 'souvenir', buyer: '' });
+            
+            const newExpense = ref({ 
+                type: 'expense', name: '', amount: null, amountTWD: null, 
+                customRate: 0.22, category: 'food', date: '2026-03-06', 
+                payment: 'cash', payer: members.value[0], payee: members.value[1], involved: [...members.value] 
+            });
+
+            const onJPYInput = () => { if(newExpense.value.amount) newExpense.value.amountTWD = Math.round(newExpense.value.amount * newExpense.value.customRate); else newExpense.value.amountTWD = null; };
+            const onTWDInput = () => { if(newExpense.value.amountTWD) newExpense.value.amount = Math.round(newExpense.value.amountTWD / newExpense.value.customRate); else newExpense.value.amount = null; };
+            const onRateInput = () => { if(newExpense.value.amount) newExpense.value.amountTWD = Math.round(newExpense.value.amount * newExpense.value.customRate); };
+
+            const CATEGORY_MAP = { sightseeing: { color: 'bg-jp-sage', icon: 'fa-solid fa-camera' }, food: { color: 'bg-jp-rust', icon: 'fa-solid fa-utensils' }, shopping: { color: 'bg-jp-rose', icon: 'fa-solid fa-bag-shopping' }, accommodation: { color: 'bg-jp-slate', icon: 'fa-solid fa-bed' }, flight: { color: 'bg-jp-gray-1', icon: 'fa-solid fa-plane' }, transport: { color: 'bg-jp-gray-2', icon: 'fa-solid fa-van-shuttle' }, ticket: { color: 'bg-jp-sage', icon: 'fa-solid fa-ticket' }, stay: { color: 'bg-jp-slate', icon: 'fa-solid fa-hotel' }, transfer: { color: 'bg-jp-sage', icon: 'fa-solid fa-money-bill-transfer' } };
+            
+            const dates = ref([{ date: '3/06', weekday: '五', area: '星野', temp: '-2°C', weather: 'snow', transport: '包車' }, { date: '3/07', weekday: '六', area: '定山溪/札幌', temp: '0°C', weather: 'cloudy', transport: '包車' }, { date: '3/08', weekday: '日', area: '登別/函館', temp: '2°C', weather: 'sunny', transport: '包車' }, { date: '3/09', weekday: '一', area: '函館', temp: '3°C', weather: 'sunny', transport: '市電' }, { date: '3/10', weekday: '二', area: '函館/札幌', temp: '1°C', weather: 'cloudy', transport: 'JR' }, { date: '3/11', weekday: '三', area: '小樽', temp: '-1°C', weather: 'snow', transport: 'JR' }, { date: '3/12', weekday: '四', area: '旭山', temp: '-5°C', weather: 'snow', transport: '巴士' }, { date: '3/13', weekday: '五', area: '札幌', temp: '1°C', weather: 'cloudy', transport: '地鐵' }, { date: '3/14', weekday: '六', area: '回程', temp: '2°C', weather: 'sunny', transport: '飛機' }]);
+            const hotels = ref([{ name: '星野リゾート トマム The Tower', date: '3/06', address: '北海道勇払郡占冠村中トマム' }, { name: 'Vessel Inn 札幌中島公園', date: '3/07', address: '札幌市中央區南九條西4-1-2' }, { name: 'OMO5 函館 by 星野集團', date: '3/08', address: '函館市若松町24番1' }, { name: 'Royal Park Canvas 札幌大通公園', date: '3/10', address: '札幌市中央区大通西1-12' }]);
+
+            const currencyResult = computed(() => Math.round(currencyInput.value * exchangeRate.value));
+            const currentItinerary = computed(() => itineraryData.value[selectedDateIndex.value] || []);
+            const totalExpensesTWD = computed(() => expenses.value.filter(e => e.category !== 'transfer').reduce((sum, e) => sum + (e.amountTWD || Math.round(e.amount * (e.customRate || exchangeRate.value))), 0));
+            const totalExpensesJPY = computed(() => expenses.value.filter(e => e.category !== 'transfer').reduce((sum, e) => sum + (e.amount || 0), 0));
+            
+            const balanceSheet = computed(() => {
+                const balances = {};
+                members.value.forEach(m => balances[m] = { name: m, paid: 0, share: 0, balance: 0, paidTWD: 0, shareTWD: 0, balanceTWD: 0, categoryBreakdown: {} });
+                Object.keys(CATEGORY_MAP).forEach(cat => { members.value.forEach(m => balances[m].categoryBreakdown[cat] = 0) });
+
+                expenses.value.forEach(exp => {
+                    const rate = exp.customRate || exchangeRate.value;
+                    const jpy = exp.amount;
+                    const twd = exp.amountTWD || Math.round(jpy * rate);
+
+                    if (exp.category === 'transfer') {
+                        if (balances[exp.payer]) { balances[exp.payer].paid += jpy; balances[exp.payer].paidTWD += twd; }
+                        if (balances[exp.involved[0]]) { balances[exp.involved[0]].share += jpy; balances[exp.involved[0]].shareTWD += twd; }
+                    } else {
+                        if (balances[exp.payer]) { balances[exp.payer].paid += jpy; balances[exp.payer].paidTWD += twd; }
+                        if (exp.involved && exp.involved.length > 0) {
+                            const shareJPY = jpy / exp.involved.length;
+                            const shareTWD = twd / exp.involved.length;
+                            exp.involved.forEach(p => { 
+                                if(balances[p]) {
+                                    balances[p].share += shareJPY;
+                                    balances[p].shareTWD += shareTWD;
+                                    if(balances[p].categoryBreakdown[exp.category] !== undefined) balances[p].categoryBreakdown[exp.category] += shareJPY;
+                                }
+                            });
+                        }
+                    }
+                });
+                return Object.values(balances).map(m => { m.balance = Math.round(m.paid - m.share); m.balanceTWD = Math.round(m.paidTWD - m.shareTWD); return m; });
+            });
+
+            const selectedMemberData = computed(() => balanceSheet.value.find(m => m.name === selectedMemberName.value));
+            const settlements = computed(() => {
+                let debts = balanceSheet.value.filter(m => m.balance < -10).map(m => ({...m}));
+                let credits = balanceSheet.value.filter(m => m.balance > 10).map(m => ({...m}));
+                debts.sort((a, b) => a.balance - b.balance); credits.sort((a, b) => b.balance - a.balance);
+                const result = []; let i = 0, j = 0;
+                while(i < debts.length && j < credits.length) {
+                    let debtor = debts[i], creditor = credits[j];
+                    let amount = Math.min(Math.abs(debtor.balance), creditor.balance);
+                    if(amount > 0) {
+                        const amountTWD = amount * exchangeRate.value; 
+                        result.push({ from: debtor.name, to: creditor.name, amount: Math.round(amount), amountTWD: Math.round(amountTWD) });
+                    }
+                    debtor.balance += amount; creditor.balance -= amount;
+                    if(Math.abs(debtor.balance) < 10) i++; if(Math.abs(creditor.balance) < 10) j++;
+                }
+                return result;
+            });
+
+            const syncStatusClass = computed(() => { if(statusMessage.value === '儲存中...') return 'busy'; if(isConnected.value) return 'online'; return ''; });
+            let debounceTimer = null;
+            const triggerSync = () => { if (isRemoteUpdate.value) return; statusMessage.value = '儲存中...'; clearTimeout(debounceTimer); debounceTimer = setTimeout(syncData, 1500); };
+
+            const syncData = () => {
+                if (!db) return;
+                setDoc(doc(db, "trips", "hokkaido2026"), {
+                    shoppingList: shoppingList.value,
+                    expenses: expenses.value,
+                    itineraryData: JSON.stringify(itineraryData.value),
+                    mustBuyList: mustBuyList.value,
+                    exchangeRate: exchangeRate.value,
+                    lastUpdated: new Date()
+                }).then(() => { statusMessage.value = '已同步'; isConnected.value = true; }).catch(err => { statusMessage.value = '同步失敗'; });
+            };
+
+            watch([shoppingList, expenses, itineraryData, mustBuyList, exchangeRate], () => { if (isRemoteUpdate.value) return; triggerSync(); }, { deep: true });
+
+            onMounted(() => {
+                if (db) {
+                    onSnapshot(doc(db, "trips", "hokkaido2026"), (doc) => {
+                        if (doc.exists()) {
+                            isRemoteUpdate.value = true; const data = doc.data();
+                            if(data.shoppingList) shoppingList.value = data.shoppingList;
+                            if(data.expenses) expenses.value = data.expenses;
+                            if(data.itineraryData) { try { itineraryData.value = typeof data.itineraryData === 'string' ? JSON.parse(data.itineraryData) : data.itineraryData; } catch(e) {} }
+                            if(data.mustBuyList) mustBuyList.value = data.mustBuyList;
+                            if(data.exchangeRate) exchangeRate.value = data.exchangeRate;
+                            isConnected.value = true; statusMessage.value = '連線正常';
+                            nextTick(() => { isRemoteUpdate.value = false; });
+                        } else { syncData(); }
+                    });
+                }
+            });
+
+            const formatNumber = (num) => num ? num.toLocaleString() : '0';
+            const calculateCurrency = () => {}; 
+            const getCategoryColor = (cat) => CATEGORY_MAP[cat]?.color || 'bg-gray-400';
+            const getCategoryIcon = (cat) => CATEGORY_MAP[cat]?.icon || 'fa-solid fa-circle';
+            const getShoppingCategoryColor = (id) => shoppingCategories.find(c => c.id === id)?.color || 'bg-gray-400';
+            const getShoppingCategoryIcon = (id) => shoppingCategories.find(c => c.id === id)?.icon || 'fa-solid fa-bag-shopping';
+            const getShoppingCategoryName = (id) => shoppingCategories.find(c => c.id === id)?.name || '其他';
+            const getWeatherIcon = (w) => w === 'snow' ? 'fa-solid fa-snowflake' : (w === 'sunny' ? 'fa-solid fa-sun' : 'fa-solid fa-cloud');
+            const openMap = (q) => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`, '_blank');
+            const handleAddClick = () => {
+                if (currentTab.value === 'itinerary') { isEditMode.value = false; newItinerary.value = { category: 'sightseeing' }; showItineraryModal.value = true; }
+                else if (currentTab.value === 'shopping') { newShoppingItem.value = { name: '', qty: 1, category: 'souvenir', buyer: members.value[0] }; showShoppingModal.value = true; }
+                else if (currentTab.value === 'expenses') { newExpense.value = { type: 'expense', category: 'food', payment: 'cash', date: '2026-03-06', payer: members.value[0], payee: members.value[1], involved: [...members.value], amount: null, amountTWD: null, name: '', customRate: exchangeRate.value }; showExpenseModal.value = true; }
+            };
+            const toggleSelectAll = () => newExpense.value.involved = newExpense.value.involved.length === members.value.length ? [] : [...members.value];
+            const saveItineraryItem = () => {
+                if(!newItinerary.value.name) return;
+                const newItem = { ...newItinerary.value, id: Date.now(), isNoteExpanded: false };
+                if(isEditMode.value) {
+                    const idx = currentItinerary.value.findIndex(i => i.id === newItem.id);
+                    if(idx !== -1) currentItinerary.value[idx] = newItem;
+                } else {
+                    itineraryData.value[selectedDateIndex.value].push(newItem);
+                    itineraryData.value[selectedDateIndex.value].sort((a,b) => (a.startTime > b.startTime) ? 1 : -1);
+                }
+                showItineraryModal.value = false; triggerSync();
+            };
+            const editItem = (item) => { isEditMode.value = true; newItinerary.value = { ...item }; showItineraryModal.value = true; };
+            const addShoppingItem = () => { if(newShoppingItem.value.name) shoppingList.value.push({ ...newShoppingItem.value, checked: false }); showShoppingModal.value = false; triggerSync(); };
+            const removeShoppingItem = (idx) => { shoppingList.value.splice(idx, 1); triggerSync(); };
+            const resetShoppingForm = () => { newShoppingItem.value = { name: '', qty: 1, category: 'souvenir', buyer: members.value[0] }; };
+            
+            const addExpense = () => { 
+                if(!newExpense.value.amount) return;
+                if (newExpense.value.type === 'transfer') {
+                    expenses.value.push({ name: `轉帳: ${newExpense.value.payer} ➔ ${newExpense.value.payee}`, amount: newExpense.value.amount, amountTWD: newExpense.value.amountTWD, customRate: newExpense.value.customRate, category: 'transfer', date: newExpense.value.date, payer: newExpense.value.payer, involved: [newExpense.value.payee] });
+                } else {
+                    if(!newExpense.value.name) return;
+                    expenses.value.push({ ...newExpense.value, involved: [...newExpense.value.involved] }); 
+                }
+                showExpenseModal.value = false; triggerSync(); 
+            };
+            const removeExpense = (idx) => { expenses.value.splice(idx, 1); triggerSync(); };
+            const addRegion = () => { if (newRegionName.value) { mustBuyList.value.push({ area: newRegionName.value, items: [] }); newRegionName.value = ''; triggerSync(); }};
+            const removeRegion = (idx) => { mustBuyList.value.splice(idx, 1); triggerSync(); };
+            const addMustBuyItem = (rIdx, event) => { const val = event.target.value.trim(); if (val) { mustBuyList.value[rIdx].items.push(val); event.target.value = ''; triggerSync(); }};
+            const removeMustBuyItem = (rIdx, iIdx) => { mustBuyList.value[rIdx].items.splice(iIdx, 1); triggerSync(); };
+
+            return {
+                currentTab, dates, selectedDateIndex, hotels, mustBuyList, shoppingList, expenses, members, shoppingCategories,
+                itineraryData, currentItinerary, totalExpensesJPY, totalExpensesTWD, balanceSheet, settlements, selectedMemberName, selectedMemberData,
+                currencyInput, currencyResult, calculateCurrency, formatNumber, exchangeRate,
+                getCategoryColor, getCategoryIcon, getWeatherIcon, openMap,
+                getShoppingCategoryColor, getShoppingCategoryIcon, getShoppingCategoryName,
+                showItineraryModal, showShoppingModal, showExpenseModal, isEditMode,
+                newItinerary, newShoppingItem, newExpense,
+                handleAddClick, saveItineraryItem, editItem,
+                addShoppingItem, removeShoppingItem, addExpense, removeExpense,
+                toggleSelectAll, isMustBuyEditMode, newRegionName, addRegion, removeRegion, addMustBuyItem, removeMustBuyItem,
+                triggerSync, syncData, isConnected, statusMessage, syncStatusClass,
+                resetShoppingForm, onJPYInput, onTWDInput, onRateInput
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
