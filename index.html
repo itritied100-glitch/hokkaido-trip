@@ -291,20 +291,24 @@
                 </div>
             </div>
 
-            <!-- 分帳結算儀表板 -->
             <div class="bg-white rounded-3xl p-5 mb-6 shadow-sm border border-slate-100">
                 <h3 class="font-bold text-slate-800 mb-4 flex items-center text-sm"><i class="fa-solid fa-scale-balanced text-warm-orange mr-2"></i> 分帳結算 (負為應付)</h3>
-                <div class="space-y-3">
-                    <div v-for="member in balanceSheet" :key="member.name" class="flex items-center justify-between p-2 rounded-lg bg-slate-50">
-                        <div class="flex items-center">
-                            <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs mr-3">{{ member.name.charAt(0) }}</div>
-                            <span class="text-sm font-bold text-slate-700">{{ member.name }}</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="block font-bold text-sm" :class="member.balance >= 0 ? 'text-balance-pos' : 'text-balance-neg'">
-                                {{ member.balance >= 0 ? '+' : '' }}¥{{ formatNumber(member.balance) }}
+                
+                <!-- 新增：更詳細的分帳資訊 -->
+                <div class="space-y-4">
+                    <div v-for="member in balanceSheet" :key="member.name" class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-xs mr-3">{{ member.name.charAt(0) }}</div>
+                                <span class="font-bold text-slate-700">{{ member.name }}</span>
+                            </div>
+                            <span class="text-sm font-bold" :class="member.balance >= 0 ? 'text-balance-pos' : 'text-balance-neg'">
+                                {{ member.balance >= 0 ? '應收' : '應付' }} ¥{{ formatNumber(Math.abs(member.balance)) }}
                             </span>
-                            <span class="text-[10px] text-slate-400 block">墊付 ¥{{ formatNumber(member.paid) }}</span>
+                        </div>
+                        <div class="flex justify-between text-[10px] text-slate-400 px-1">
+                            <span>消費(應付): ¥{{ formatNumber(Math.round(member.share)) }}</span>
+                            <span>墊付(已付): ¥{{ formatNumber(member.paid) }}</span>
                         </div>
                     </div>
                 </div>
@@ -453,10 +457,19 @@
                     </select>
                 </div>
                 <input v-model="newExpense.name" placeholder="項目名稱" class="w-full bg-slate-50 rounded-xl p-4 mb-4 text-sm focus:outline-none">
-                <div class="relative mb-4">
-                    <span class="absolute left-4 top-4 text-slate-400 font-bold">¥</span>
-                    <input v-model.number="newExpense.amount" type="number" placeholder="金額" class="w-full bg-slate-50 rounded-xl p-4 pl-8 text-sm focus:outline-none font-bold text-lg">
+                
+                <!-- 金額輸入區塊 (Updated: 雙幣別) -->
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div class="relative">
+                        <span class="absolute left-3 top-3 text-slate-400 font-bold text-xs">JPY</span>
+                        <input v-model.number="newExpense.amount" @input="onJPYInput" type="number" placeholder="日幣" class="w-full bg-slate-50 rounded-xl p-3 pl-10 text-sm outline-none focus:ring-2 focus:ring-deep-sea-blue">
+                    </div>
+                    <div class="relative">
+                        <span class="absolute left-3 top-3 text-slate-400 font-bold text-xs">TWD</span>
+                        <input v-model.number="newExpense.amountTWD" @input="onTWDInput" type="number" placeholder="台幣" class="w-full bg-slate-50 rounded-xl p-3 pl-10 text-sm outline-none focus:ring-2 focus:ring-deep-sea-blue">
+                    </div>
                 </div>
+
                 <div class="mb-6 border-t border-slate-100 pt-4">
                     <label class="block text-xs font-bold text-slate-500 mb-2">付款人 (誰先墊?)</label>
                     <select v-model="newExpense.payer" class="w-full bg-blue-50 text-deep-sea-blue font-bold rounded-xl p-3 text-sm outline-none mb-4">
@@ -479,7 +492,7 @@
                 </div>
             </div>
 
-            <!-- 轉帳模式 -->
+            <!-- 轉帳模式 (Updated: 雙幣別) -->
             <div v-else>
                 <div class="mb-4">
                     <input v-model="newExpense.date" type="date" class="w-full bg-slate-50 rounded-xl p-3 text-sm outline-none mb-4">
@@ -500,9 +513,16 @@
                         </div>
                     </div>
 
-                    <div class="relative mb-4">
-                        <span class="absolute left-4 top-4 text-slate-400 font-bold">¥</span>
-                        <input v-model.number="newExpense.amount" type="number" placeholder="轉帳金額" class="w-full bg-slate-50 rounded-xl p-4 pl-8 text-sm focus:outline-none font-bold text-lg text-emerald-600">
+                    <!-- 雙幣別輸入 (轉帳) -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="relative">
+                            <span class="absolute left-3 top-3 text-slate-400 font-bold text-xs">JPY</span>
+                            <input v-model.number="newExpense.amount" @input="onJPYInput" type="number" placeholder="日幣" class="w-full bg-slate-50 rounded-xl p-3 pl-10 text-sm outline-none focus:ring-2 focus:ring-emerald-500 font-bold text-emerald-600">
+                        </div>
+                        <div class="relative">
+                            <span class="absolute left-3 top-3 text-slate-400 font-bold text-xs">TWD</span>
+                            <input v-model.number="newExpense.amountTWD" @input="onTWDInput" type="number" placeholder="台幣" class="w-full bg-slate-50 rounded-xl p-3 pl-10 text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -575,12 +595,29 @@
             const newItinerary = ref({ id: null, category: 'sightseeing', name: '', startTime: '', address: '', price: '', note: '' });
             const newShoppingItem = ref({ name: '', qty: 1, category: 'souvenir', buyer: '' });
             
-            // 花費狀態 (增加 type: 'expense' | 'transfer')
             const newExpense = ref({ 
-                type: 'expense', // 預設為消費
-                name: '', amount: null, category: 'food', date: '2026-03-06', 
+                type: 'expense', 
+                name: '', amount: null, amountTWD: null, // Add TWD field
+                category: 'food', date: '2026-03-06', 
                 payment: 'cash', payer: members.value[0], payee: members.value[1], involved: [...members.value] 
             });
+
+            // Currency Conversion Logic for Modal
+            const onJPYInput = () => {
+                if(newExpense.value.amount) {
+                    newExpense.value.amountTWD = Math.round(newExpense.value.amount * exchangeRate.value);
+                } else {
+                    newExpense.value.amountTWD = null;
+                }
+            };
+            
+            const onTWDInput = () => {
+                if(newExpense.value.amountTWD) {
+                    newExpense.value.amount = Math.round(newExpense.value.amountTWD / exchangeRate.value);
+                } else {
+                    newExpense.value.amount = null;
+                }
+            };
 
             // Static Data
             const CATEGORY_MAP = { sightseeing: { color: 'bg-green-500', icon: 'fa-solid fa-camera' }, food: { color: 'bg-red-400', icon: 'fa-solid fa-utensils' }, shopping: { color: 'bg-orange-400', icon: 'fa-solid fa-bag-shopping' }, accommodation: { color: 'bg-purple-500', icon: 'fa-solid fa-bed' }, flight: { color: 'bg-blue-500', icon: 'fa-solid fa-plane' }, transport: { color: 'bg-indigo-500', icon: 'fa-solid fa-van-shuttle' }, ticket: { color: 'bg-cyan-500', icon: 'fa-solid fa-ticket' }, stay: { color: 'bg-purple-500', icon: 'fa-solid fa-hotel' }, transfer: { color: 'bg-teal-500', icon: 'fa-solid fa-money-bill-transfer' } };
@@ -593,18 +630,16 @@
             const totalExpensesJPY = computed(() => expenses.value.filter(e => e.category !== 'transfer').reduce((sum, e) => sum + (e.amount || 0), 0));
             const totalExpensesTWD = computed(() => Math.round(totalExpensesJPY.value * exchangeRate.value));
             
-            // Settlement Logic (Updated for Transfer)
+            // Settlement Logic
             const balanceSheet = computed(() => {
                 const balances = {};
                 members.value.forEach(m => balances[m] = { name: m, paid: 0, share: 0, balance: 0 });
                 
                 expenses.value.forEach(exp => {
                     if (exp.category === 'transfer') {
-                        // 轉帳邏輯：A 給 B 錢 => A paid, B share (A 債權增加/債務減少，B 債權減少/債務增加)
                         if (balances[exp.payer]) balances[exp.payer].paid += exp.amount;
                         if (balances[exp.involved[0]]) balances[exp.involved[0]].share += exp.amount;
                     } else {
-                        // 一般消費邏輯
                         if (balances[exp.payer]) balances[exp.payer].paid += exp.amount;
                         if (exp.involved && exp.involved.length > 0) {
                             const amountPerPerson = exp.amount / exp.involved.length;
@@ -615,9 +650,8 @@
                 return Object.values(balances).map(m => { m.balance = Math.round(m.paid - m.share); return m; });
             });
 
-            // Settlement Plan
             const settlements = computed(() => {
-                let debts = balanceSheet.value.filter(m => m.balance < -10).map(m => ({...m})); // 忽略小額誤差
+                let debts = balanceSheet.value.filter(m => m.balance < -10).map(m => ({...m}));
                 let credits = balanceSheet.value.filter(m => m.balance > 10).map(m => ({...m}));
                 debts.sort((a, b) => a.balance - b.balance);
                 credits.sort((a, b) => b.balance - a.balance);
@@ -704,7 +738,6 @@
                 }
             });
 
-            // Methods
             const formatNumber = (num) => num ? num.toLocaleString() : '0';
             const calculateCurrency = () => {}; 
             const getCategoryColor = (cat) => CATEGORY_MAP[cat]?.color || 'bg-gray-400';
@@ -717,7 +750,15 @@
             const handleAddClick = () => {
                 if (currentTab.value === 'itinerary') { isEditMode.value = false; newItinerary.value = { category: 'sightseeing' }; showItineraryModal.value = true; }
                 else if (currentTab.value === 'shopping') { newShoppingItem.value = { name: '', qty: 1, category: 'souvenir', buyer: members.value[0] }; showShoppingModal.value = true; }
-                else if (currentTab.value === 'expenses') { newExpense.value = { type: 'expense', category: 'food', payment: 'cash', date: '2026-03-06', payer: members.value[0], payee: members.value[1], involved: [...members.value], amount: null, name: '' }; showExpenseModal.value = true; }
+                else if (currentTab.value === 'expenses') { 
+                    newExpense.value = { 
+                        type: 'expense', 
+                        category: 'food', payment: 'cash', date: '2026-03-06', 
+                        payer: members.value[0], payee: members.value[1], involved: [...members.value], 
+                        amount: null, amountTWD: null, name: '' 
+                    }; 
+                    showExpenseModal.value = true; 
+                }
             };
             const toggleSelectAll = () => newExpense.value.involved = newExpense.value.involved.length === members.value.length ? [] : [...members.value];
             const saveItineraryItem = () => {
@@ -738,22 +779,19 @@
             const removeShoppingItem = (idx) => { shoppingList.value.splice(idx, 1); triggerSync(); };
             const resetShoppingForm = () => { newShoppingItem.value = { name: '', qty: 1, category: 'souvenir', buyer: members.value[0] }; };
             
-            // Add Expense (Handle Transfer vs Expense)
             const addExpense = () => { 
                 if(!newExpense.value.amount) return;
                 
                 if (newExpense.value.type === 'transfer') {
-                    // 轉帳記錄
                     expenses.value.push({
                         name: `轉帳: ${newExpense.value.payer} ➔ ${newExpense.value.payee}`,
                         amount: newExpense.value.amount,
                         category: 'transfer',
                         date: newExpense.value.date,
                         payer: newExpense.value.payer,
-                        involved: [newExpense.value.payee] // 只有收款人涉及
+                        involved: [newExpense.value.payee]
                     });
                 } else {
-                    // 一般消費記錄
                     if(!newExpense.value.name) return;
                     expenses.value.push({ 
                         ...newExpense.value, 
@@ -782,7 +820,7 @@
                 addShoppingItem, removeShoppingItem, addExpense, removeExpense,
                 toggleSelectAll, isMustBuyEditMode, newRegionName, addRegion, removeRegion, addMustBuyItem, removeMustBuyItem,
                 triggerSync, syncData, isConnected, statusMessage, syncStatusClass,
-                resetShoppingForm 
+                resetShoppingForm, onJPYInput, onTWDInput
             }
         }
     }).mount('#app');
