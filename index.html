@@ -202,7 +202,7 @@
     <!-- Header 區域 -->
     <div class="header-bg">
         <div class="header-image-container">
-            <img src="./banner.jpg"
+            <img src="./banner.jpg" 
                  onerror="this.src='https://images.unsplash.com/photo-1548578709-32269a838573?q=80&w=1920&auto=format&fit=crop'"
                  alt="北海道家族旅行">
             <div class="banner-text-overlay"></div>
@@ -289,7 +289,7 @@
             </div>
         </div>
 
-        <!-- Tab 2: 資訊 -->
+        <!-- Tab 2: 資訊 (Must Buy 改為可編輯) -->
         <div v-if="currentTab === 'info'" class="animate-fade-in space-y-5 pb-20">
             <!-- 匯率計算 -->
             <div class="bg-gradient-to-br from-deep-sea-blue to-cyan-700 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
@@ -327,38 +327,88 @@
                     </li>
                 </ul>
             </div>
-            <!-- 必買清單 -->
-            <div class="bg-white rounded-3xl p-6 card-shadow">
-                <h3 class="font-bold text-slate-800 mb-4 border-b border-slate-100 pb-2"><i class="fa-solid fa-thumbs-up text-red-400 mr-2"></i> 必買推薦</h3>
-                <div v-for="region in mustBuyList" :key="region.area" class="mb-4 last:mb-0">
-                    <h4 class="font-bold text-sm text-slate-600 mb-2 flex items-center"><span class="w-1.5 h-4 bg-red-300 rounded-r mr-2"></span>{{ region.area }}</h4>
-                    <div class="flex flex-wrap gap-2"><span v-for="item in region.items" class="bg-slate-50 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-100">{{ item }}</span></div>
+
+            <!-- 必買清單 (可編輯版) -->
+            <div class="bg-white rounded-3xl p-6 card-shadow relative">
+                <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                    <h3 class="font-bold text-slate-800"><i class="fa-solid fa-thumbs-up text-red-400 mr-2"></i> 必買推薦</h3>
+                    <button @click="isMustBuyEditMode = !isMustBuyEditMode" class="text-xs px-2 py-1 rounded-full transition-colors" :class="isMustBuyEditMode ? 'bg-deep-sea-blue text-white' : 'bg-slate-100 text-slate-500'">
+                        <i class="fa-solid fa-pen-to-square mr-1"></i> {{ isMustBuyEditMode ? '完成' : '編輯' }}
+                    </button>
+                </div>
+                
+                <div v-for="(region, rIdx) in mustBuyList" :key="rIdx" class="mb-5 last:mb-0 group/region">
+                    <div class="flex items-center mb-2">
+                        <span class="w-1.5 h-4 bg-red-300 rounded-r mr-2"></span>
+                        <input v-if="isMustBuyEditMode" v-model="region.area" class="font-bold text-sm text-slate-600 bg-slate-50 border-b border-slate-300 w-full focus:outline-none">
+                        <h4 v-else class="font-bold text-sm text-slate-600">{{ region.area }}</h4>
+                        
+                        <button v-if="isMustBuyEditMode" @click="removeRegion(rIdx)" class="ml-2 text-slate-300 hover:text-red-400 text-xs"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-2">
+                        <span v-for="(item, iIdx) in region.items" :key="iIdx" class="bg-slate-50 text-slate-600 text-xs px-3 py-1.5 rounded-lg border border-slate-100 flex items-center">
+                            {{ item }}
+                            <button v-if="isMustBuyEditMode" @click="removeMustBuyItem(rIdx, iIdx)" class="ml-2 text-slate-300 hover:text-red-400 font-bold">×</button>
+                        </span>
+                        
+                        <!-- 編輯模式下新增項目 -->
+                        <div v-if="isMustBuyEditMode" class="flex items-center">
+                            <input @keyup.enter="addMustBuyItem(rIdx, $event)" placeholder="輸入後Enter" class="text-xs bg-white border border-slate-200 rounded-lg px-2 py-1.5 w-24 outline-none focus:border-deep-sea-blue">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 編輯模式下新增區域 -->
+                <div v-if="isMustBuyEditMode" class="mt-4 pt-4 border-t border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <input v-model="newRegionName" placeholder="新區域名稱" class="flex-1 text-sm bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-deep-sea-blue">
+                        <button @click="addRegion" class="bg-deep-sea-blue text-white text-xs px-3 py-2 rounded-lg font-bold">新增區域</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Tab 3: 購物清單 -->
+        <!-- Tab 3: 購物清單 (改為條列式) -->
         <div v-if="currentTab === 'shopping'" class="animate-fade-in pb-20">
-            <div class="grid grid-cols-2 gap-4">
-                <div @click="showShoppingModal = true; resetShoppingForm()" class="bg-white border-2 border-dashed border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center text-slate-400 cursor-pointer min-h-[160px] hover:bg-slate-50 transition-colors">
-                    <i class="fa-solid fa-plus text-3xl mb-2"></i>
-                    <span class="text-xs font-bold">新增商品</span>
-                </div>
-                <div v-for="(item, idx) in shoppingList" :key="idx" class="bg-white rounded-2xl p-3 card-shadow relative group">
-                    <div class="aspect-square bg-slate-50 rounded-xl mb-2 overflow-hidden relative border border-slate-100 flex items-center justify-center">
+            <!-- 新增按鈕 -->
+            <button @click="showShoppingModal = true; resetShoppingForm()" class="w-full bg-white border-2 border-dashed border-slate-300 rounded-2xl p-4 mb-4 text-slate-400 font-bold hover:bg-slate-50 hover:border-slate-400 transition-colors flex items-center justify-center">
+                <i class="fa-solid fa-plus mr-2"></i> 新增待買商品
+            </button>
+
+            <!-- 條列式清單 -->
+            <div class="space-y-3">
+                <div v-for="(item, idx) in shoppingList" :key="idx" class="flex items-center bg-white p-3 rounded-2xl card-shadow transition-all hover:translate-x-1">
+                    <!-- Checkbox -->
+                    <div class="mr-3 pl-1">
+                        <input type="checkbox" v-model="item.checked" class="w-5 h-5 accent-deep-sea-blue rounded border-slate-300 cursor-pointer">
+                    </div>
+
+                    <!-- 圖片 (縮小) -->
+                    <div class="w-12 h-12 bg-slate-50 rounded-lg overflow-hidden border border-slate-100 shrink-0 flex items-center justify-center">
                         <img v-if="item.image" :src="item.image" class="w-full h-full object-cover">
-                        <i v-else class="fa-solid fa-gift text-4xl text-slate-200"></i>
-                        <button @click="removeShoppingItem(idx)" class="absolute top-2 right-2 bg-black/50 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"><i class="fa-solid fa-xmark"></i></button>
+                        <i v-else class="fa-solid fa-gift text-slate-300 text-lg"></i>
                     </div>
-                    <div class="flex justify-between items-center">
-                        <div><p class="font-bold text-sm text-slate-800 truncate w-24">{{ item.name }}</p><p class="text-xs text-slate-400">x {{ item.qty }}</p></div>
-                        <input type="checkbox" v-model="item.checked" class="w-5 h-5 accent-deep-sea-blue rounded border-slate-300">
+
+                    <!-- 資訊 -->
+                    <div class="flex-1 ml-3 overflow-hidden">
+                        <p class="font-bold text-sm text-slate-700 truncate" :class="{'line-through text-slate-400': item.checked}">{{ item.name }}</p>
+                        <p class="text-xs text-slate-400 mt-0.5">數量: <span class="font-mono text-deep-sea-blue font-bold">{{ item.qty }}</span></p>
                     </div>
+
+                    <!-- 刪除 -->
+                    <button @click="removeShoppingItem(idx)" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-300 hover:text-red-400 hover:bg-red-50 transition-colors ml-2">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+
+                <div v-if="shoppingList.length === 0" class="text-center py-10 text-slate-300 text-sm">
+                    暫無購物清單
                 </div>
             </div>
         </div>
 
-        <!-- Tab 4: 花費 (分帳儀表板) -->
+        <!-- Tab 4: 花費 -->
         <div v-if="currentTab === 'expenses'" class="animate-fade-in pb-20">
             <!-- 總支出卡片 -->
             <div class="bg-gradient-to-r from-deep-sea-blue to-cyan-600 text-white rounded-3xl p-6 mb-6 relative overflow-hidden shadow-lg">
@@ -545,6 +595,8 @@
             const showShoppingModal = ref(false);
             const showExpenseModal = ref(false);
             const isEditMode = ref(false);
+            const isMustBuyEditMode = ref(false);
+            const newRegionName = ref('');
 
             const CATEGORY_MAP = {
                 sightseeing: { color: 'bg-green-500', icon: 'fa-solid fa-camera' },
@@ -721,6 +773,17 @@
             };
             const removeExpense = (idx) => expenses.value.splice(idx, 1);
 
+            // Must Buy Edit Logic
+            const addRegion = () => {
+                if (newRegionName.value) { mustBuyList.value.push({ area: newRegionName.value, items: [] }); newRegionName.value = ''; }
+            };
+            const removeRegion = (idx) => mustBuyList.value.splice(idx, 1);
+            const addMustBuyItem = (rIdx, event) => {
+                const val = event.target.value.trim();
+                if (val) { mustBuyList.value[rIdx].items.push(val); event.target.value = ''; }
+            };
+            const removeMustBuyItem = (rIdx, iIdx) => mustBuyList.value[rIdx].items.splice(iIdx, 1);
+
             onMounted(() => calculateCurrency());
 
             return {
@@ -732,7 +795,7 @@
                 newItinerary, newShoppingItem, newExpense,
                 handleAddClick, saveItineraryItem, editItem,
                 addShoppingItem, removeShoppingItem, handleImageUpload, addExpense, removeExpense,
-                toggleSelectAll
+                toggleSelectAll, isMustBuyEditMode, newRegionName, addRegion, removeRegion, addMustBuyItem, removeMustBuyItem
             }
         }
     }).mount('#app');
