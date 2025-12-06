@@ -170,18 +170,24 @@
                                     <h3 class="font-bold text-jp-slate text-lg leading-tight truncate pr-6">{{ item.name }}</h3>
                                     <div class="flex gap-3 shrink-0 absolute top-4 right-4">
                                          <button @click.stop="editItem(item)" class="text-jp-silver hover:text-jp-slate transition-colors"><i class="fa-solid fa-pencil"></i></button>
-                                         <!-- 新增：刪除按鈕 (垃圾桶) -->
                                          <button @click.stop="removeItineraryItemCard(item.id)" class="text-jp-silver hover:text-jp-rust transition-colors"><i class="fa-solid fa-trash-can"></i></button>
                                          <button class="drag-handle text-jp-silver hover:text-jp-slate transition-colors"><i class="fa-solid fa-bars"></i></button>
                                     </div>
                                 </div>
                                 
-                                <div class="flex gap-2 mt-2">
-                                    <button v-if="item.address" @click.stop="openMap(item.address || item.name)" class="text-xs bg-jp-mist/20 text-jp-slate px-2 py-1 rounded-lg hover:bg-jp-slate hover:text-white transition-colors flex items-center">
-                                        <i class="fa-solid fa-location-arrow mr-1"></i> 導航
+                                <div class="flex flex-wrap gap-2 mt-2">
+                                    <!-- 地址連結按鈕 -->
+                                    <button v-if="item.address" @click.stop="openMap(item.address)" class="text-xs bg-jp-mist/20 text-jp-slate px-2.5 py-1.5 rounded-lg hover:bg-jp-slate hover:text-white transition-colors flex items-center text-left">
+                                        <i class="fa-solid fa-location-dot mr-1.5 text-jp-rust"></i> {{ item.address }}
                                     </button>
-                                    <span v-if="item.price" class="text-xs bg-jp-rose/10 text-jp-rose px-2 py-1 rounded-lg border border-jp-rose/20">
-                                        <i class="fa-solid fa-ticket mr-1"></i> {{ item.price }}
+                                    <!-- 備用導航按鈕 -->
+                                    <button v-else @click.stop="openMap(item.name)" class="text-xs bg-jp-mist/20 text-jp-slate px-2.5 py-1.5 rounded-lg hover:bg-jp-slate hover:text-white transition-colors flex items-center">
+                                        <i class="fa-solid fa-map mr-1.5"></i> 導航
+                                    </button>
+
+                                    <!-- 費用標籤 -->
+                                    <span v-if="item.price" class="text-xs bg-jp-rose/10 text-jp-rose px-2.5 py-1.5 rounded-lg border border-jp-rose/20 flex items-center whitespace-nowrap">
+                                        <i class="fa-solid fa-ticket mr-1.5"></i> {{ item.price }}
                                     </span>
                                 </div>
                                 
@@ -212,12 +218,12 @@
                 <div class="flex items-center justify-between gap-4 relative z-10">
                     <div class="flex-1">
                         <label class="text-[10px] text-jp-sand block mb-1">JPY</label>
-                        <input type="number" v-model="currencyInput" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white font-bold text-lg focus:outline-none">
+                        <input type="number" v-model="calcJPY" @input="calculateTWD" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white font-bold text-lg focus:outline-none">
                     </div>
                     <i class="fa-solid fa-arrow-right-arrow-left text-jp-sand mt-4"></i>
                     <div class="flex-1">
                         <label class="text-[10px] text-jp-sand block mb-1">TWD</label>
-                        <div class="w-full bg-white/10 rounded-xl px-3 py-2 text-white text-lg font-bold border border-transparent">{{ currencyResult }}</div>
+                        <div class="w-full bg-white/10 rounded-xl px-3 py-2 text-white text-lg font-bold border border-transparent">{{ calcTWD }}</div>
                     </div>
                 </div>
             </div>
