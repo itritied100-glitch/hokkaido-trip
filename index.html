@@ -170,6 +170,8 @@
                                     <h3 class="font-bold text-jp-slate text-lg leading-tight truncate pr-6">{{ item.name }}</h3>
                                     <div class="flex gap-3 shrink-0 absolute top-4 right-4">
                                          <button @click.stop="editItem(item)" class="text-jp-silver hover:text-jp-slate transition-colors"><i class="fa-solid fa-pencil"></i></button>
+                                         <!-- 新增：刪除按鈕 (垃圾桶) -->
+                                         <button @click.stop="removeItineraryItemCard(item.id)" class="text-jp-silver hover:text-jp-rust transition-colors"><i class="fa-solid fa-trash-can"></i></button>
                                          <button class="drag-handle text-jp-silver hover:text-jp-slate transition-colors"><i class="fa-solid fa-bars"></i></button>
                                     </div>
                                 </div>
@@ -597,7 +599,10 @@
                 <input v-model="newItinerary.price" placeholder="費用" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm outline-none text-jp-slate">
                 <textarea v-model="newItinerary.note" placeholder="備註" rows="3" class="w-full bg-jp-mist/20 rounded-xl p-3 text-sm outline-none text-jp-slate"></textarea>
             </div>
+            
             <div class="flex space-x-3 mt-6">
+                 <!-- 修正：當 isEditMode 為 true 時顯示刪除按鈕 -->
+                <button v-if="isEditMode" @click="removeItineraryItem" class="py-3 px-4 rounded-xl bg-jp-rust/10 text-jp-rust font-bold text-sm hover:bg-jp-rust/20"><i class="fa-solid fa-trash-can"></i></button>
                 <button @click="showItineraryModal = false" class="flex-1 py-3 rounded-xl bg-jp-mist/30 text-jp-gray-2 font-bold text-sm">取消</button>
                 <button @click="saveItineraryItem" class="flex-1 py-3 rounded-xl bg-jp-slate text-white font-bold text-sm shadow-md">{{ isEditMode ? '更新' : '新增' }}</button>
             </div>
@@ -860,7 +865,7 @@
                 { dayLabel: 'Day 9', date: '03/14', weekday: '六', area: '回程', temp: '2°C', weather: 'sunny', transport: '飛機' }
             ]);
             
-            const hotels = ref([{ name: '星野リゾート トマム The Tower', date: '03/06', address: '北海道勇払郡占冠村中トマム' }, { name: 'Vessel Inn 札幌中島公園', date: '03/07', address: '札幌市中央區南九條西4-1-2' }, { name: 'OMO5 函館 by 星野集團', date: '03/08', address: '函館市若松町24番1' }, { name: 'Royal Park Canvas 札幌大通公園', date: '03/10', address: '札幌市中央区大通西1-12' }]);
+            const hotels = ref([{ name: '星野リゾート トマム The Tower', date: '3/06', address: '北海道勇払郡占冠村中トマム' }, { name: 'Vessel Inn 札幌中島公園', date: '3/07', address: '札幌市中央區南九條西4-1-2' }, { name: 'OMO5 函館 by 星野集團', date: '3/08', address: '函館市若松町24番1' }, { name: 'Royal Park Canvas 札幌大通公園', date: '3/10', address: '札幌市中央区大通西1-12' }]);
             
             const inboundFlights = ref([
                 { airline: '中華航空', code: 'CI131', depTime: '14:40', arrTime: '18:15', arrTerminal: 'TPE T2' },
@@ -1027,7 +1032,13 @@
             const toggleSelectAll = () => newExpense.value.involved = newExpense.value.involved.length === members.value.length ? [] : [...members.value];
             const saveItineraryItem = () => {
                 if(!newItinerary.value.name) return;
-                const newItem = { ...newItinerary.value, id: Date.now(), isNoteExpanded: false };
+                const newItem = { 
+                    ...newItinerary.value, 
+                    isNoteExpanded: false
+                };
+                // Make sure ID exists
+                if(!newItem.id) newItem.id = Date.now();
+                
                 if(isEditMode.value) {
                     const idx = currentItinerary.value.findIndex(i => i.id === newItem.id);
                     if(idx !== -1) currentItinerary.value[idx] = newItem;
@@ -1037,6 +1048,29 @@
                 }
                 showItineraryModal.value = false; triggerSync();
             };
+            const removeItineraryItem = () => {
+                // Remove the currently editing item
+                const idx = currentItinerary.value.findIndex(i => i.id === newItinerary.value.id);
+                if(idx !== -1) {
+                    if(confirm("確定要刪除此行程嗎？")) {
+                        currentItinerary.value.splice(idx, 1);
+                        showItineraryModal.value = false;
+                        triggerSync();
+                    }
+                }
+            };
+            
+            // Function to delete from card directly
+            const removeItineraryItemCard = (id) => {
+                if(confirm("確定要刪除此行程嗎？")) {
+                    const idx = currentItinerary.value.findIndex(i => i.id === id);
+                    if (idx !== -1) {
+                        currentItinerary.value.splice(idx, 1);
+                        triggerSync();
+                    }
+                }
+            };
+            
             const editItem = (item) => { isEditMode.value = true; newItinerary.value = { ...item }; showItineraryModal.value = true; };
             const addShoppingItem = () => { if(newShoppingItem.value.name) shoppingList.value.push({ ...newShoppingItem.value, checked: false }); showShoppingModal.value = false; triggerSync(); };
             const removeShoppingItem = (idx) => { shoppingList.value.splice(idx, 1); triggerSync(); };
@@ -1058,7 +1092,7 @@
             const addMustBuyItem = (rIdx, event) => { const val = event.target.value.trim(); if (val) { mustBuyList.value[rIdx].items.push(val); event.target.value = ''; triggerSync(); }};
             const removeMustBuyItem = (rIdx, iIdx) => { mustBuyList.value[rIdx].items.splice(iIdx, 1); triggerSync(); };
             
-            // Initial Data Population
+            // Initial Data Population based on User Request
             const populateInitialData = () => {
                 const initialItineraryData = [
     [
@@ -1142,7 +1176,7 @@
                 getShoppingCategoryColor, getShoppingCategoryIcon, getShoppingCategoryName, getPieChartGradient, getPaymentPieChartGradient,
                 showItineraryModal, showShoppingModal, showExpenseModal, isEditMode, isMustBuyEditMode, newRegionName,
                 newItinerary, newShoppingItem, newExpense, CATEGORY_HEX, CATEGORY_MAP_NAME,
-                handleAddClick, saveItineraryItem, editItem,
+                handleAddClick, saveItineraryItem, editItem, removeItineraryItem, removeItineraryItemCard,
                 addShoppingItem, removeShoppingItem, addExpense, removeExpense,
                 toggleSelectAll, addRegion, removeRegion, addMustBuyItem, removeMustBuyItem,
                 triggerSync, syncData, isConnected, statusMessage, syncStatusClass,
