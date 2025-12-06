@@ -175,7 +175,7 @@
                                     </div>
                                 </div>
                                 
-                                <div class="flex flex-wrap gap-2 mt-2">
+                                <div class="flex gap-2 mt-2">
                                     <!-- 地址連結按鈕 -->
                                     <button v-if="item.address" @click.stop="openMap(item.address)" class="text-xs bg-jp-mist/20 text-jp-slate px-2.5 py-1.5 rounded-lg hover:bg-jp-slate hover:text-white transition-colors flex items-center text-left">
                                         <i class="fa-solid fa-location-dot mr-1.5 text-jp-rust"></i> {{ item.address }}
@@ -212,7 +212,7 @@
                     <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
                     <div class="flex items-center bg-white/10 rounded-lg px-2 py-1 border border-white/10">
                         <span class="text-xs text-jp-sand mr-1">匯率:</span>
-                        <input type="number" v-model="exchangeRate" @change="triggerSync" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
+                        <input type="number" v-model="exchangeRate" @change="onExchangeRateChange" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
                     </div>
                 </div>
                 <div class="flex items-center justify-between gap-4 relative z-10">
@@ -223,7 +223,8 @@
                     <i class="fa-solid fa-arrow-right-arrow-left text-jp-sand mt-4"></i>
                     <div class="flex-1">
                         <label class="text-[10px] text-jp-sand block mb-1">TWD</label>
-                        <div class="w-full bg-white/10 rounded-xl px-3 py-2 text-white text-lg font-bold border border-transparent">{{ calcTWD }}</div>
+                        <!-- 雙向綁定 -->
+                        <input type="number" v-model="calcTWD" @input="calculateJPY" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white font-bold text-lg focus:outline-none">
                     </div>
                 </div>
             </div>
@@ -409,6 +410,24 @@
                 <i class="fa-solid fa-plus mr-2"></i> 新增支出
             </button>
 
+            <!-- 支出明細篩選 -->
+            <div class="mb-6">
+                 <h3 class="font-bold text-jp-slate mb-3 flex items-center text-sm px-1"><i class="fa-solid fa-filter mr-2 text-jp-gray-1"></i> 支出明細篩選</h3>
+                 <div class="flex gap-3">
+                     <select v-model="filterMember" class="flex-1 bg-white border border-jp-mist/50 rounded-xl p-2.5 text-sm text-jp-slate outline-none focus:border-jp-rust">
+                         <option value="all">所有成員</option>
+                         <option v-for="m in members" :key="m" :value="m">{{ m }}</option>
+                     </select>
+                     <select v-model="filterCategory" class="flex-1 bg-white border border-jp-mist/50 rounded-xl p-2.5 text-sm text-jp-slate outline-none focus:border-jp-rust">
+                         <option value="all">所有類別</option>
+                         <option v-for="(icon, cat) in CATEGORY_MAP" :key="cat" :value="cat">{{ CATEGORY_MAP_NAME[cat] || cat }}</option>
+                     </select>
+                 </div>
+                 <div v-if="filteredExpenses.length > 0 && (filterMember !== 'all' || filterCategory !== 'all')" class="mt-2 text-right text-xs text-jp-gray-1">
+                     篩選總計: ¥{{ formatNumber(filteredExpenses.reduce((s, e) => s + e.amount, 0)) }}
+                 </div>
+            </div>
+
             <!-- 分帳結算 -->
             <div class="mb-6">
                 <h3 class="font-bold text-jp-slate mb-3 flex items-center text-sm px-1"><i class="fa-solid fa-scale-balanced text-jp-rose mr-2"></i> 分帳結算</h3>
@@ -456,7 +475,7 @@
                         </div>
                     </div>
 
-                    <!-- Pie Chart: 消費類別 -->
+                    <!-- Pie Chart: 消費類別 (Updated to Horizontal Bar List) -->
                     <div v-if="selectedMemberData.categoryBreakdown" class="mb-2">
                         <div class="text-xs text-jp-gray-1 mb-3">消費類別分析 (依金額排序)</div>
                         <div class="space-y-2">
@@ -485,7 +504,7 @@
                         </div>
                     </div>
 
-                    <!-- 支付方式分析 (New: Pie Chart) -->
+                    <!-- 支付方式分析 (Pie Chart) -->
                     <div class="mb-2 mt-4 border-t border-jp-mist/30 pt-4">
                         <div class="text-xs text-jp-gray-1 mb-3">支付方式分析 (墊付)</div>
                         <div class="flex items-center justify-between bg-m-mist/5 p-3 rounded-xl">
@@ -548,7 +567,8 @@
                 <h3 class="font-bold text-jp-slate mb-5 flex items-center"><i class="fa-solid fa-receipt text-jp-gray-1 mr-2"></i>支出紀錄</h3>
                 <div v-if="expenses.length === 0" class="text-center text-jp-silver py-10">尚無紀錄</div>
                 <div v-else class="space-y-4">
-                    <div v-for="(exp, idx) in expenses" :key="idx" class="flex items-start justify-between border-b border-jp-mist/30 pb-3 last:border-0">
+                    <!-- Filtered Expenses Loop -->
+                    <div v-for="(exp, idx) in filteredExpenses" :key="idx" class="flex items-start justify-between border-b border-jp-mist/30 pb-3 last:border-0">
                         <div class="flex items-start">
                             <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs mr-3 shadow-sm shrink-0" :class="getCategoryColor(exp.category)">
                                 <i :class="getCategoryIcon(exp.category)"></i>
@@ -572,7 +592,10 @@
                         <div class="text-right shrink-0">
                             <p class="font-bold text-jp-slate text-sm">¥{{ formatNumber(exp.amount) }}</p>
                             <p class="text-[10px] text-jp-gray-1">NT$ {{ formatNumber(exp.amountTWD) }}</p>
-                            <button @click="removeExpense(idx)" class="text-[10px] text-jp-silver hover:text-jp-rust mt-1 block w-full text-right">刪除</button>
+                            <div class="flex justify-end gap-2 mt-1">
+                                <button @click="editExpense(exp, idx)" class="text-[10px] text-jp-silver hover:text-jp-slate"><i class="fa-solid fa-pen"></i></button>
+                                <button @click="removeExpense(idx)" class="text-[10px] text-jp-silver hover:text-jp-rust"><i class="fa-solid fa-trash-can"></i></button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -662,6 +685,7 @@
     <!-- 3. 新增花費 Modal -->
     <div v-if="showExpenseModal" class="fixed inset-0 bg-jp-slate/40 z-50 flex items-center justify-center p-6 backdrop-blur-sm animate-fade-in">
         <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl max-h-[95vh] overflow-y-auto">
+            <h3 class="font-bold text-lg mb-4 text-center text-jp-slate">{{ isExpenseEditMode ? '編輯支出' : '記一筆' }}</h3>
             
             <div class="flex mb-5 bg-jp-mist/20 p-1 rounded-xl">
                 <button @click="newExpense.type = 'expense'" :class="newExpense.type === 'expense' ? 'bg-white shadow text-jp-slate' : 'text-jp-gray-1'" class="flex-1 py-2 rounded-lg text-sm font-bold transition-all">一般消費</button>
@@ -686,6 +710,10 @@
                         <option value="transport">交通</option>
                         <option value="stay">住宿</option>
                         <option value="ticket">門票</option>
+                        <option value="entertainment">娛樂</option>
+                        <option value="communication">網卡/通訊</option>
+                        <option value="medical">醫藥</option>
+                        <option value="other">其他/雜支</option>
                     </select>
                 </div>
                 <input v-model="newExpense.name" placeholder="項目名稱" class="w-full bg-jp-mist/20 rounded-xl p-4 mb-4 text-sm focus:outline-none text-jp-slate">
@@ -763,7 +791,7 @@
 
             <div class="flex space-x-3">
                 <button @click="showExpenseModal = false" class="flex-1 py-3 rounded-xl bg-jp-mist/30 text-jp-gray-2 font-bold text-sm">取消</button>
-                <button @click="addExpense" class="flex-1 py-3 rounded-xl bg-jp-rust text-white font-bold text-sm shadow-md">儲存</button>
+                <button @click="saveExpense" class="flex-1 py-3 rounded-xl bg-jp-rust text-white font-bold text-sm shadow-md">儲存</button>
             </div>
         </div>
     </div>
@@ -795,7 +823,7 @@
             const isConnected = ref(false);
             const statusMessage = ref('連線中...');
             const exchangeRate = ref(0.22);
-            const currencyInput = ref(50000);
+            // currencyInput removed as it was causing error
             const members = ref(['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟']);
             const selectedMemberName = ref(members.value[0]); 
             
@@ -813,6 +841,10 @@
             const itineraryData = ref([]);
             const mustBuyList = ref([]);
 
+            // Filters
+            const filterMember = ref('all');
+            const filterCategory = ref('all');
+
             const showItineraryModal = ref(false);
             const showShoppingModal = ref(false);
             const showExpenseModal = ref(false);
@@ -820,6 +852,10 @@
             const isMustBuyEditMode = ref(false);
             const newRegionName = ref('');
             const isRemoteUpdate = ref(false);
+            
+            // New state for expense editing
+            const isExpenseEditMode = ref(false);
+            const editingExpenseIndex = ref(null);
 
             const newItinerary = ref({ id: null, category: 'sightseeing', name: '', startTime: '', address: '', price: '', note: '' });
             const newShoppingItem = ref({ name: '', qty: 1, category: 'souvenir', buyer: '' });
@@ -837,27 +873,27 @@
             // Info Tab Calculator Logic (Bi-directional)
             const calcJPY = ref(50000); 
             const calcTWD = ref(Math.round(50000 * 0.22));
+            const calculateTWD = () => { if (calcJPY.value !== '') calcTWD.value = Math.round(calcJPY.value * exchangeRate.value); };
+            const calculateJPY = () => { if (calcTWD.value !== '') calcJPY.value = Math.round(calcTWD.value / exchangeRate.value); };
+            const onExchangeRateChange = () => { triggerSync(); calculateTWD(); };
 
-            const calculateTWD = () => {
-                if (calcJPY.value !== '') {
-                    calcTWD.value = Math.round(calcJPY.value * exchangeRate.value);
-                }
+            const CATEGORY_MAP = { 
+                sightseeing: { color: 'bg-jp-sage', icon: 'fa-solid fa-camera' }, 
+                food: { color: 'bg-jp-rust', icon: 'fa-solid fa-utensils' }, 
+                shopping: { color: 'bg-jp-rose', icon: 'fa-solid fa-bag-shopping' }, 
+                accommodation: { color: 'bg-jp-slate', icon: 'fa-solid fa-bed' }, 
+                flight: { color: 'bg-jp-gray-1', icon: 'fa-solid fa-plane' }, 
+                transport: { color: 'bg-jp-gray-2', icon: 'fa-solid fa-van-shuttle' }, 
+                ticket: { color: 'bg-jp-sage', icon: 'fa-solid fa-ticket' }, 
+                stay: { color: 'bg-jp-slate', icon: 'fa-solid fa-hotel' }, 
+                transfer: { color: 'bg-jp-sage', icon: 'fa-solid fa-money-bill-transfer' },
+                entertainment: { color: 'bg-jp-sand', icon: 'fa-solid fa-gamepad' },
+                communication: { color: 'bg-jp-gray-2', icon: 'fa-solid fa-wifi' },
+                medical: { color: 'bg-jp-rose', icon: 'fa-solid fa-kit-medical' },
+                other: { color: 'bg-jp-silver', icon: 'fa-solid fa-ellipsis' }
             };
-            const calculateJPY = () => {
-                if (calcTWD.value !== '') {
-                    calcJPY.value = Math.round(calcTWD.value / exchangeRate.value);
-                }
-            };
-            
-            const onExchangeRateChange = () => {
-                triggerSync();
-                calculateTWD(); // Recalculate TWD when rate changes
-            };
-
-
-            const CATEGORY_MAP = { sightseeing: { color: 'bg-jp-sage', icon: 'fa-solid fa-camera' }, food: { color: 'bg-jp-rust', icon: 'fa-solid fa-utensils' }, shopping: { color: 'bg-jp-rose', icon: 'fa-solid fa-bag-shopping' }, accommodation: { color: 'bg-jp-slate', icon: 'fa-solid fa-bed' }, flight: { color: 'bg-jp-gray-1', icon: 'fa-solid fa-plane' }, transport: { color: 'bg-jp-gray-2', icon: 'fa-solid fa-van-shuttle' }, ticket: { color: 'bg-jp-sage', icon: 'fa-solid fa-ticket' }, stay: { color: 'bg-jp-slate', icon: 'fa-solid fa-hotel' }, transfer: { color: 'bg-jp-sage', icon: 'fa-solid fa-money-bill-transfer' } };
-            const CATEGORY_MAP_NAME = { sightseeing: '景點', food: '飲食', shopping: '購物', accommodation: '住宿', flight: '機票', transport: '交通', ticket: '門票', stay: '住宿', transfer: '轉帳' };
-            const CATEGORY_HEX = { sightseeing: '#A9B7AA', food: '#976666', shopping: '#C09D9B', accommodation: '#7A848D', flight: '#999EA2', transport: '#93939B', ticket: '#A9B7AA', stay: '#7A848D', transfer: '#A9B7AA' };
+            const CATEGORY_MAP_NAME = { sightseeing: '景點', food: '飲食', shopping: '購物', accommodation: '住宿', flight: '機票', transport: '交通', ticket: '門票', stay: '住宿', transfer: '轉帳', entertainment: '娛樂', communication: '通訊', medical: '醫藥', other: '其他' };
+            const CATEGORY_HEX = { sightseeing: '#A9B7AA', food: '#976666', shopping: '#C09D9B', accommodation: '#7A848D', flight: '#999EA2', transport: '#93939B', ticket: '#A9B7AA', stay: '#7A848D', transfer: '#A9B7AA', entertainment: '#DBD2C9', communication: '#93939B', medical: '#C09D9B', other: '#BEBEBE' };
 
             const dates = ref([
                 { dayLabel: 'Day 1', date: '03/06', weekday: '五', area: '星野', temp: '-2°C', weather: 'snow', transport: '包車' }, 
@@ -879,8 +915,25 @@
                 { airline: '酷航', code: 'TR893', depTime: '18:40', arrTime: '22:20', arrTerminal: 'TPE T1' }
             ]);
 
-            const currencyResult = computed(() => Math.round(currencyInput.value * exchangeRate.value));
+            // Removed currencyResult as it is no longer used directly in template (using calcTWD)
             const currentItinerary = computed(() => itineraryData.value[selectedDateIndex.value] || []);
+            
+            // Computed for filtered expenses
+            const filteredExpenses = computed(() => {
+                return expenses.value.filter(exp => {
+                    const matchMember = filterMember.value === 'all' || exp.payer === filterMember.value || (exp.involved && exp.involved.includes(filterMember.value));
+                    const matchCategory = filterCategory.value === 'all' || exp.category === filterCategory.value;
+                    return matchMember && matchCategory;
+                }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date desc
+            });
+
+            // Calculate totals based on FILTERED expenses if we want dynamic totals, 
+            // BUT usually "Total Expenses" card should show GRAND TOTAL of the trip.
+            // However, if user filters, maybe they want to see total of filter?
+            // The request said "list ... can be filtered", usually the big total card stays grand total.
+            // But let's update the total in the filter section itself (I added a small summary there).
+            // The top card remains Grand Total.
+            
             const totalExpensesTWD = computed(() => expenses.value.filter(e => e.category !== 'transfer').reduce((sum, e) => sum + (e.amountTWD || Math.round(e.amount * (e.customRate || exchangeRate.value))), 0));
             const totalExpensesJPY = computed(() => expenses.value.filter(e => e.category !== 'transfer').reduce((sum, e) => sum + (e.amount || 0), 0));
             
@@ -1022,7 +1075,7 @@
             watch(selectedDateIndex, () => { nextTick(() => { initSortable(); }); });
 
             const formatNumber = (num) => num ? num.toLocaleString() : '0';
-            const calculateCurrency = () => {}; 
+            
             const getCategoryColor = (cat) => CATEGORY_MAP[cat]?.color || 'bg-m-gray';
             const getCategoryIcon = (cat) => CATEGORY_MAP[cat]?.icon || 'fa-solid fa-circle';
             const getShoppingCategoryColor = (id) => shoppingCategories.find(c => c.id === id)?.color || 'bg-m-slate';
@@ -1033,7 +1086,17 @@
             const handleAddClick = () => {
                 if (currentTab.value === 'itinerary') { isEditMode.value = false; newItinerary.value = { category: 'sightseeing' }; showItineraryModal.value = true; }
                 else if (currentTab.value === 'shopping') { newShoppingItem.value = { name: '', qty: 1, category: 'souvenir', buyer: members.value[0] }; showShoppingModal.value = true; }
-                else if (currentTab.value === 'expenses') { newExpense.value = { type: 'expense', category: 'food', payment: 'cash', date: '2026-03-06', payer: members.value[0], payee: members.value[1], involved: [...members.value], amount: null, amountTWD: null, name: '', customRate: exchangeRate.value }; showExpenseModal.value = true; }
+                else if (currentTab.value === 'expenses') { 
+                    newExpense.value = { 
+                        type: 'expense', 
+                        category: 'food', payment: 'cash', date: '2026-03-06', 
+                        payer: members.value[0], payee: members.value[1], involved: [...members.value], 
+                        amount: null, amountTWD: null, name: '', customRate: exchangeRate.value 
+                    }; 
+                    showExpenseModal.value = true; 
+                    isExpenseEditMode.value = false; // Ensure Add mode
+                    editingExpenseIndex.value = null;
+                }
             };
             const toggleSelectAll = () => newExpense.value.involved = newExpense.value.involved.length === members.value.length ? [] : [...members.value];
             const saveItineraryItem = () => {
@@ -1082,16 +1145,48 @@
             const removeShoppingItem = (idx) => { shoppingList.value.splice(idx, 1); triggerSync(); };
             const resetShoppingForm = () => { newShoppingItem.value = { name: '', qty: 1, category: 'souvenir', buyer: members.value[0] }; };
             
-            const addExpense = () => { 
-                if(!newExpense.value.amount) return;
-                if (newExpense.value.type === 'transfer') {
-                    expenses.value.push({ name: `轉帳: ${newExpense.value.payer} ➔ ${newExpense.value.payee}`, amount: newExpense.value.amount, amountTWD: newExpense.value.amountTWD, customRate: newExpense.value.customRate, category: 'transfer', date: newExpense.value.date, payer: newExpense.value.payer, involved: [newExpense.value.payee] });
-                } else {
-                    if(!newExpense.value.name) return;
-                    expenses.value.push({ ...newExpense.value, involved: [...newExpense.value.involved] }); 
-                }
-                showExpenseModal.value = false; triggerSync(); 
+            // Expense Edit Functions
+            const editExpense = (exp, idx) => {
+                isExpenseEditMode.value = true;
+                editingExpenseIndex.value = idx;
+                newExpense.value = JSON.parse(JSON.stringify(exp)); // Deep copy
+                // Ensure number types
+                newExpense.value.amount = Number(newExpense.value.amount);
+                if(newExpense.value.amountTWD) newExpense.value.amountTWD = Number(newExpense.value.amountTWD);
+                if(newExpense.value.customRate) newExpense.value.customRate = Number(newExpense.value.customRate);
+                showExpenseModal.value = true;
             };
+
+            const saveExpense = () => {
+                if (!newExpense.value.amount) return;
+
+                const expenseData = {
+                    ...newExpense.value,
+                    // Re-construct name based on type if needed, or allow manual edit
+                    // For transfer, auto-generate name to keep format
+                    name: newExpense.value.type === 'transfer' 
+                          ? `轉帳: ${newExpense.value.payer} ➔ ${newExpense.value.payee}` 
+                          : newExpense.value.name,
+                    involved: newExpense.value.type === 'transfer' 
+                              ? [newExpense.value.payee] 
+                              : [...newExpense.value.involved]
+                };
+
+                if (isExpenseEditMode.value && editingExpenseIndex.value !== null) {
+                    expenses.value[editingExpenseIndex.value] = expenseData;
+                } else {
+                    if (newExpense.value.type !== 'transfer' && !newExpense.value.name) return;
+                    expenses.value.push(expenseData);
+                }
+
+                showExpenseModal.value = false;
+                triggerSync();
+                isExpenseEditMode.value = false;
+                editingExpenseIndex.value = null;
+            };
+            
+            const addExpense = () => { saveExpense(); }; // Alias for backward compatibility in template binding
+            
             const removeExpense = (idx) => { expenses.value.splice(idx, 1); triggerSync(); };
             const addRegion = () => { if (newRegionName.value) { mustBuyList.value.push({ area: newRegionName.value, items: [] }); newRegionName.value = ''; triggerSync(); }};
             const removeRegion = (idx) => { mustBuyList.value.splice(idx, 1); triggerSync(); };
@@ -1177,18 +1272,20 @@
             return {
                 currentTab, dates, selectedDateIndex, hotels, mustBuyList, shoppingList, expenses, members, shoppingCategories,
                 itineraryData, currentItinerary, totalExpensesJPY, totalExpensesTWD, balanceSheet, settlements, selectedMemberName, selectedMemberData, inboundFlights,
-                currencyInput, currencyResult, calculateCurrency, formatNumber, exchangeRate,
+                // currencyInput is removed
+                formatNumber, exchangeRate,
                 getCategoryColor, getCategoryIcon, getWeatherIcon, openMap,
                 getShoppingCategoryColor, getShoppingCategoryIcon, getShoppingCategoryName, getPieChartGradient, getPaymentPieChartGradient,
                 showItineraryModal, showShoppingModal, showExpenseModal, isEditMode, isMustBuyEditMode, newRegionName,
                 newItinerary, newShoppingItem, newExpense, CATEGORY_HEX, CATEGORY_MAP_NAME,
                 handleAddClick, saveItineraryItem, editItem, removeItineraryItem, removeItineraryItemCard,
-                addShoppingItem, removeShoppingItem, addExpense, removeExpense,
+                addShoppingItem, removeShoppingItem, addExpense, removeExpense, saveExpense, editExpense,
                 toggleSelectAll, addRegion, removeRegion, addMustBuyItem, removeMustBuyItem,
                 triggerSync, syncData, isConnected, statusMessage, syncStatusClass,
                 resetShoppingForm, onJPYInput, onTWDInput, onRateInput,
                 calculateTWD, calculateJPY, onExchangeRateChange,
-                calcJPY, calcTWD
+                calcJPY, calcTWD, filterMember, filterCategory, filteredExpenses, // Add filteredExpenses, filterMember, filterCategory
+                isExpenseEditMode, editingExpenseIndex
             }
         }
     }).mount('#app');
