@@ -428,8 +428,8 @@
                          <option v-for="(icon, cat) in CATEGORY_MAP" :key="cat" :value="cat">{{ CATEGORY_MAP_NAME[cat] || cat }}</option>
                      </select>
                  </div>
-                 <div v-if="analysisItems.length > 0 && (filterMember !== 'all' || filterCategory !== 'all')" class="mt-2 text-right text-xs text-jp-gray-1">
-                     篩選總計: ¥{{ formatNumber(analysisItems.reduce((s, e) => s + (e.displayAmount || 0), 0)) }}
+                 <div v-if="filteredExpenses.length > 0 && (filterMember !== 'all' || filterCategory !== 'all')" class="mt-2 text-right text-xs text-jp-gray-1">
+                     篩選總計: ¥{{ formatNumber(filteredExpenses.reduce((s, e) => s + e.amount, 0)) }}
                  </div>
             </div>
 
@@ -441,8 +441,10 @@
                          <!-- Pie Chart -->
                          <div class="relative w-32 h-32 pie-chart shadow-inner shrink-0"
                               :style="{ background: getFilterPieChartGradient(analysisItems) }">
-                              <div class="absolute inset-5 bg-white rounded-full flex items-center justify-center">
-                                  <span class="text-[10px] text-jp-gray-2 text-center leading-tight">總計<br>¥{{ formatNumber(Math.round(analysisItems.reduce((s, e) => s + (e.displayAmount || 0), 0))) }}</span>
+                              <div class="absolute inset-5 bg-white rounded-full flex flex-col items-center justify-center">
+                                  <span class="text-[10px] text-jp-gray-2 text-center leading-tight">總計</span>
+                                  <span class="text-sm font-bold text-jp-slate">¥{{ formatNumber(Math.round(analysisItems.reduce((s, e) => s + (e.displayAmount || 0), 0))) }}</span>
+                                  <span class="text-[10px] text-jp-gray-1">NT$ {{ formatNumber(Math.round(analysisItems.reduce((s, e) => s + (e.displayAmountTWD || 0), 0))) }}</span>
                               </div>
                          </div>
                          
@@ -454,7 +456,10 @@
                                      <div class="w-2.5 h-2.5 rounded-full mr-2 shadow-sm" :style="{ backgroundColor: CATEGORY_HEX[item.category] }"></div>
                                      <span class="truncate max-w-[80px]">{{ CATEGORY_MAP_NAME[item.category] || item.category }}</span>
                                  </div>
-                                 <span class="font-bold text-jp-slate">¥{{ formatNumber(Math.round(item.total)) }}</span>
+                                 <div class="text-right">
+                                     <span class="font-bold text-jp-slate block">¥{{ formatNumber(Math.round(item.total)) }}</span>
+                                     <span class="text-[9px] text-jp-gray-1 block">NT$ {{ formatNumber(Math.round(item.totalTWD)) }}</span>
+                                 </div>
                              </div>
                          </div>
                      </div>
@@ -547,6 +552,7 @@
                             <span class="block font-bold text-jp-slate text-lg">¥ {{ formatNumber(selectedMemberData.paid) }}</span>
                         </div>
                     </div>
+                    
                 </div>
             </div>
 
@@ -921,8 +927,7 @@
             // Removed currencyResult as it is no longer used directly in template (using calcTWD)
             const currentItinerary = computed(() => itineraryData.value[selectedDateIndex.value] || []);
             
-            // Computed for filtered expenses (Not used for logic, mainly display in Summary)
-            // But we created analysisItems which is smarter
+            // Computed for filtered expenses
             const filteredExpenses = computed(() => {
                 return expenses.value.filter(exp => {
                     const matchMember = filterMember.value === 'all' || exp.payer === filterMember.value || (exp.involved && exp.involved.includes(filterMember.value));
@@ -1071,11 +1076,13 @@
             
             const getFilteredCategoryStats = (filteredList) => {
                 const breakdown = {};
+                const breakdownTWD = {};
                 filteredList.forEach(e => {
                      breakdown[e.category] = (breakdown[e.category] || 0) + (e.displayAmount || 0);
+                     breakdownTWD[e.category] = (breakdownTWD[e.category] || 0) + (e.displayAmountTWD || 0);
                 });
                 return Object.entries(breakdown)
-                      .map(([cat, amount]) => ({ category: cat, total: amount }))
+                      .map(([cat, amount]) => ({ category: cat, total: amount, totalTWD: breakdownTWD[cat] }))
                       .sort((a,b) => b.total - a.total);
             };
 
@@ -1385,8 +1392,8 @@
                 triggerSync, syncData, isConnected, statusMessage, syncStatusClass,
                 resetShoppingForm, onJPYInput, onTWDInput, onRateInput,
                 calculateTWD, calculateJPY, onExchangeRateChange,
-                calcJPY, calcTWD, filterMember, filterCategory, filteredExpenses, // Add filteredExpenses, filterMember, filterCategory
-                isExpenseEditMode, editingExpenseIndex, analysisItems // Added analysisItems
+                calcJPY, calcTWD, filterMember, filterCategory, filteredExpenses, analysisItems, // Added analysisItems
+                isExpenseEditMode, editingExpenseIndex
             }
         }
     }).mount('#app');
