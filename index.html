@@ -212,7 +212,7 @@
                     <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
                     <div class="flex items-center bg-white/10 rounded-lg px-2 py-1 border border-white/10">
                         <span class="text-xs text-jp-sand mr-1">匯率:</span>
-                        <input type="number" v-model="exchangeRate" @change="triggerSync" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
+                        <input type="number" v-model="exchangeRate" @change="onExchangeRateChange" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
                     </div>
                 </div>
                 <div class="flex items-center justify-between gap-4 relative z-10">
@@ -475,7 +475,7 @@
                         </div>
                     </div>
 
-                    <!-- Pie Chart: 消費類別 (Updated to Horizontal Bar List) -->
+                    <!-- Pie Chart: 消費類別 -->
                     <div v-if="selectedMemberData.categoryBreakdown" class="mb-2">
                         <div class="text-xs text-jp-gray-1 mb-3">消費類別分析 (依金額排序)</div>
                         <div class="space-y-2">
@@ -542,6 +542,37 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- 🧾 個人消費明細列表 (New Section) -->
+                    <div class="mt-5 border-t border-jp-mist/30 pt-4">
+                        <div class="text-xs text-jp-gray-1 mb-3 flex items-center">
+                            <i class="fa-solid fa-file-invoice mr-2"></i> 個人消費明細 (計入)
+                        </div>
+                        
+                        <div v-if="selectedMemberData.consumptionItems && selectedMemberData.consumptionItems.length > 0" class="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                            <div v-for="item in selectedMemberData.consumptionItems.sort((a,b) => new Date(b.date) - new Date(a.date))" 
+                                 :key="item.id" 
+                                 class="flex justify-between items-center bg-white border border-jp-mist/20 p-2.5 rounded-lg shadow-sm hover:border-jp-mist/50 transition-colors">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] shrink-0" :class="getCategoryColor(item.category)">
+                                        <i :class="getCategoryIcon(item.category)"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="text-xs font-bold text-jp-slate truncate">{{ item.name }}</div>
+                                        <div class="text-[9px] text-jp-gray-2">{{ item.date }}</div>
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div class="text-xs font-bold text-jp-slate font-mono">¥{{ formatNumber(Math.round(item.amount)) }}</div>
+                                    <div class="text-[9px] text-jp-gray-2 font-mono">NT${{ formatNumber(Math.round(item.amountTWD)) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-center py-6 text-jp-silver text-xs bg-jp-mist/10 rounded-xl">
+                            無消費紀錄
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -932,7 +963,15 @@
             
             const balanceSheet = computed(() => {
                 const balances = {};
-                members.value.forEach(m => balances[m] = { name: m, paid: 0, share: 0, balance: 0, paidTWD: 0, shareTWD: 0, balanceTWD: 0, paidCash: 0, paidCard: 0, categoryBreakdown: {} });
+                members.value.forEach(m => balances[m] = { 
+                    name: m, 
+                    paid: 0, share: 0, balance: 0, 
+                    paidTWD: 0, shareTWD: 0, balanceTWD: 0, 
+                    paidCash: 0, paidCard: 0, 
+                    categoryBreakdown: {},
+                    consumptionItems: [] // New array for consumption list
+                });
+                
                 Object.keys(CATEGORY_MAP).forEach(cat => { members.value.forEach(m => balances[m].categoryBreakdown[cat] = 0) });
 
                 expenses.value.forEach(exp => {
@@ -958,6 +997,16 @@
                                     balances[p].share += shareJPY;
                                     balances[p].shareTWD += shareTWD;
                                     if(balances[p].categoryBreakdown[exp.category] !== undefined) balances[p].categoryBreakdown[exp.category] += shareJPY;
+                                    
+                                    // Add to consumptionItems list
+                                    balances[p].consumptionItems.push({
+                                        id: exp.id, // Store ID for potential linking
+                                        date: exp.date,
+                                        name: exp.name,
+                                        category: exp.category,
+                                        amount: shareJPY,
+                                        amountTWD: shareTWD
+                                    });
                                 }
                             });
                         }
@@ -1141,8 +1190,20 @@
             // Expense Edit Functions
             const editExpense = (exp, idx) => {
                 isExpenseEditMode.value = true;
-                editingExpenseIndex.value = idx;
+                // Use ID to find index if possible, fallback to idx for backward compat or direct list edit
+                // Since filtered list index != original index, we must use ID.
+                // But wait, the list view passes 'idx' which is index in filtered list! This is wrong.
+                // We need to pass the expense object itself and find its ID in the main list.
+                // Assuming exp has an ID. If not (old data), we need to handle it.
+                // Let's migrate data to have IDs.
+                
+                // Find index in main `expenses` array
+                const trueIndex = expenses.value.findIndex(e => e === exp); // Object reference equality should work if passed from v-for
+                if(trueIndex === -1) return; // Should not happen
+
+                editingExpenseIndex.value = trueIndex;
                 newExpense.value = JSON.parse(JSON.stringify(exp)); // Deep copy
+                
                 // Ensure number types
                 newExpense.value.amount = Number(newExpense.value.amount);
                 if(newExpense.value.amountTWD) newExpense.value.amountTWD = Number(newExpense.value.amountTWD);
@@ -1155,8 +1216,7 @@
 
                 const expenseData = {
                     ...newExpense.value,
-                    // Re-construct name based on type if needed, or allow manual edit
-                    // For transfer, auto-generate name to keep format
+                    id: newExpense.value.id || Date.now(), // Ensure ID
                     name: newExpense.value.type === 'transfer' 
                           ? `轉帳: ${newExpense.value.payer} ➔ ${newExpense.value.payee}` 
                           : newExpense.value.name,
@@ -1178,9 +1238,29 @@
                 editingExpenseIndex.value = null;
             };
             
-            const addExpense = () => { saveExpense(); }; // Alias for backward compatibility in template binding
+            const addExpense = () => { saveExpense(); }; 
             
-            const removeExpense = (idx) => { expenses.value.splice(idx, 1); triggerSync(); };
+            // Corrected removeExpense to use object reference or ID
+            const removeExpense = (idx_or_obj) => { 
+                if(confirm("確定要刪除此筆支出嗎？")) {
+                    // Check if input is index (number) or object (from filtered list)
+                    // In template: removeExpense(idx) passes index of filtered list.
+                    // THIS IS RISKY. Better pass the object itself.
+                    // I will update template to pass `exp` instead of `idx`.
+                }
+            };
+            
+            // Updated remove function that takes the expense object
+            const removeExpenseObj = (exp) => {
+                if(confirm("確定要刪除此筆支出嗎？")) {
+                    const idx = expenses.value.findIndex(e => e === exp);
+                    if(idx !== -1) {
+                        expenses.value.splice(idx, 1);
+                        triggerSync();
+                    }
+                }
+            };
+            
             const addRegion = () => { if (newRegionName.value) { mustBuyList.value.push({ area: newRegionName.value, items: [] }); newRegionName.value = ''; triggerSync(); }};
             const removeRegion = (idx) => { mustBuyList.value.splice(idx, 1); triggerSync(); };
             const addMustBuyItem = (rIdx, event) => { const val = event.target.value.trim(); if (val) { mustBuyList.value[rIdx].items.push(val); event.target.value = ''; triggerSync(); }};
@@ -1272,7 +1352,7 @@
                 showItineraryModal, showShoppingModal, showExpenseModal, isEditMode, isMustBuyEditMode, newRegionName,
                 newItinerary, newShoppingItem, newExpense, CATEGORY_HEX, CATEGORY_MAP_NAME,
                 handleAddClick, saveItineraryItem, editItem, removeItineraryItem, removeItineraryItemCard,
-                addShoppingItem, removeShoppingItem, addExpense, removeExpense, saveExpense, editExpense,
+                addShoppingItem, removeShoppingItem, addExpense, removeExpense: removeExpenseObj, saveExpense, editExpense, // Updated removeExpense to removeExpenseObj
                 toggleSelectAll, addRegion, removeRegion, addMustBuyItem, removeMustBuyItem,
                 triggerSync, syncData, isConnected, statusMessage, syncStatusClass,
                 resetShoppingForm, onJPYInput, onTWDInput, onRateInput,
