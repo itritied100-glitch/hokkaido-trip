@@ -75,6 +75,11 @@
         /* 飛機圖示飛行方向 */
         .flight-arrow-outbound { transform: rotate(90deg); display: inline-block; }
         .flight-arrow-inbound { transform: rotate(-90deg); display: inline-block; }
+
+        /* 自定義滾動條 */
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #CCD2CC; border-radius: 20px; }
     </style>
 </head>
 <body class="text-jp-slate">
@@ -212,7 +217,7 @@
                     <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
                     <div class="flex items-center bg-white/10 rounded-lg px-2 py-1 border border-white/10">
                         <span class="text-xs text-jp-sand mr-1">匯率:</span>
-                        <input type="number" v-model="exchangeRate" @change="onExchangeRateChange" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
+                        <input type="number" v-model="exchangeRate" @change="triggerSync" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
                     </div>
                 </div>
                 <div class="flex items-center justify-between gap-4 relative z-10">
@@ -423,8 +428,66 @@
                          <option v-for="(icon, cat) in CATEGORY_MAP" :key="cat" :value="cat">{{ CATEGORY_MAP_NAME[cat] || cat }}</option>
                      </select>
                  </div>
-                 <div v-if="filteredExpenses.length > 0 && (filterMember !== 'all' || filterCategory !== 'all')" class="mt-2 text-right text-xs text-jp-gray-1">
-                     篩選總計: ¥{{ formatNumber(filteredExpenses.reduce((s, e) => s + e.amount, 0)) }}
+                 <div v-if="analysisItems.length > 0 && (filterMember !== 'all' || filterCategory !== 'all')" class="mt-2 text-right text-xs text-jp-gray-1">
+                     篩選總計: ¥{{ formatNumber(analysisItems.reduce((s, e) => s + (e.displayAmount || 0), 0)) }}
+                 </div>
+            </div>
+
+            <!-- 消費統計分析 (Modified: Dynamic based on filters) -->
+            <div class="mb-6" v-if="analysisItems.length > 0">
+                 <h3 class="font-bold text-jp-slate mb-3 flex items-center text-sm px-1"><i class="fa-solid fa-chart-pie mr-2 text-jp-rose"></i> 消費統計分析 {{ filterMember !== 'all' ? '(' + filterMember + ')' : '(總覽)' }}</h3>
+                 <div class="bg-white rounded-3xl p-5 shadow-sm border border-jp-mist/30">
+                     <div class="flex items-center justify-between">
+                         <!-- Pie Chart -->
+                         <div class="relative w-32 h-32 pie-chart shadow-inner shrink-0"
+                              :style="{ background: getFilterPieChartGradient(analysisItems) }">
+                              <div class="absolute inset-5 bg-white rounded-full flex items-center justify-center">
+                                  <span class="text-[10px] text-jp-gray-2 text-center leading-tight">總計<br>¥{{ formatNumber(Math.round(analysisItems.reduce((s, e) => s + (e.displayAmount || 0), 0))) }}</span>
+                              </div>
+                         </div>
+                         
+                         <!-- Legend -->
+                         <div class="flex-1 ml-5 space-y-2 max-h-40 overflow-y-auto hide-scrollbar">
+                             <div v-for="(item, idx) in getFilteredCategoryStats(analysisItems)" :key="idx" 
+                                  class="flex items-center justify-between text-xs text-jp-gray-2">
+                                 <div class="flex items-center">
+                                     <div class="w-2.5 h-2.5 rounded-full mr-2 shadow-sm" :style="{ backgroundColor: CATEGORY_HEX[item.category] }"></div>
+                                     <span class="truncate max-w-[80px]">{{ CATEGORY_MAP_NAME[item.category] || item.category }}</span>
+                                 </div>
+                                 <span class="font-bold text-jp-slate">¥{{ formatNumber(Math.round(item.total)) }}</span>
+                             </div>
+                         </div>
+                     </div>
+                     
+                     <!-- 🧾 詳細明細列表 (Moved here & Updated logic) -->
+                     <div class="mt-4 border-t border-jp-mist/30 pt-4">
+                         <div class="text-xs text-jp-gray-1 mb-2 flex items-center justify-between">
+                             <span><i class="fa-solid fa-list-ul mr-1.5"></i> 詳細明細列表</span>
+                             <span class="text-[10px] bg-jp-mist/20 px-2 py-0.5 rounded-full">{{ analysisItems.length }} 筆</span>
+                         </div>
+                         <div class="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                             <div v-for="exp in analysisItems" :key="exp.id" class="flex justify-between items-center bg-jp-mist/5 p-2 rounded-lg border border-transparent hover:border-jp-mist/30 transition-colors">
+                                 <div class="flex items-center gap-2 min-w-0">
+                                     <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] shrink-0" :class="getCategoryColor(exp.category)">
+                                         <i :class="getCategoryIcon(exp.category)"></i>
+                                     </div>
+                                     <div class="min-w-0">
+                                         <div class="text-xs font-bold text-jp-slate truncate">{{ exp.name }}</div>
+                                         <div class="text-[9px] text-jp-gray-2 flex items-center">
+                                            <span class="mr-2">{{ exp.date }}</span>
+                                            <span v-if="exp.isShare" class="text-jp-rust">分攤額 (由 {{ exp.payer }} 墊付)</span>
+                                            <span v-else-if="exp.category === 'transfer'" class="text-jp-sage">轉帳</span>
+                                            <span v-else>{{ exp.payer }} 墊付</span>
+                                         </div>
+                                     </div>
+                                 </div>
+                                 <div class="text-right shrink-0">
+                                     <div class="text-xs font-bold text-jp-slate font-mono">¥{{ formatNumber(Math.round(exp.displayAmount)) }}</div>
+                                     <div class="text-[9px] text-jp-gray-1 font-mono">NT$ {{ formatNumber(Math.round(exp.displayAmountTWD)) }}</div>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
                  </div>
             </div>
 
@@ -444,7 +507,7 @@
                         <span class="text-xs font-bold text-jp-gray-2 whitespace-nowrap">{{ member.name }}</span>
                     </div>
                 </div>
-
+                
                 <div v-if="selectedMemberData" class="bg-white rounded-3xl p-5 mt-2 shadow-sm border border-jp-mist/30 animate-fade-in">
                     <div class="flex justify-between items-center mb-4 border-b border-jp-mist/30 pb-3">
                         <h3 class="font-bold text-jp-slate text-lg">{{ selectedMemberData.name }} 的帳務</h3>
@@ -457,8 +520,7 @@
                             </span>
                         </div>
                     </div>
-                    
-                    <!-- Charts: 收支對比 -->
+                    <!-- 欠費/付款 圖表 -->
                     <div class="mb-5">
                         <div class="flex justify-between text-xs text-jp-gray-1 mb-1">
                             <span>收支對比 (JPY)</span>
@@ -474,105 +536,17 @@
                             <div class="bg-jp-slate h-full" :style="{ width: (selectedMemberData.paid / (Math.max(selectedMemberData.share, selectedMemberData.paid) * 1.2 || 1) * 100) + '%' }"></div>
                         </div>
                     </div>
-
-                    <!-- Pie Chart: 消費類別 -->
-                    <div v-if="selectedMemberData.categoryBreakdown" class="mb-2">
-                        <div class="text-xs text-jp-gray-1 mb-3">消費類別分析 (依金額排序)</div>
-                        <div class="space-y-2">
-                            <!-- Loop through sorted categories -->
-                            <div v-for="(amount, cat) in Object.entries(selectedMemberData.categoryBreakdown).sort((a,b) => b[1] - a[1])" 
-                                 :key="cat[0]" 
-                                 v-show="amount > 0">
-                                
-                                <div class="flex justify-between items-center text-[10px] text-jp-gray-2 mb-0.5">
-                                    <div class="flex items-center">
-                                        <i :class="[getCategoryIcon(cat[0]), 'mr-1.5 text-xs', 'text-' + getCategoryColor(cat[0]).replace('bg-', '')]"></i>
-                                        <span>{{ CATEGORY_MAP_NAME[cat[0]] || cat[0] }}</span>
-                                    </div>
-                                    <div class="text-right">
-                                        <span class="font-bold text-jp-slate mr-1">¥{{ formatNumber(Math.round(amount)) }}</span>
-                                        <span class="opacity-60">({{ Math.round(amount / (selectedMemberData.share || 1) * 100) }}%)</span>
-                                    </div>
-                                </div>
-                                <div class="w-full h-1.5 bg-jp-mist/20 rounded-full overflow-hidden">
-                                    <div class="h-full rounded-full" 
-                                         :class="getCategoryColor(cat[0])"
-                                         :style="{ width: (amount / (selectedMemberData.share || 1) * 100) + '%' }">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 支付方式分析 (Pie Chart) -->
-                    <div class="mb-2 mt-4 border-t border-jp-mist/30 pt-4">
-                        <div class="text-xs text-jp-gray-1 mb-3">支付方式分析 (墊付)</div>
-                        <div class="flex items-center justify-between bg-m-mist/5 p-3 rounded-xl">
-                             <div class="relative w-24 h-24 pie-chart shadow-inner"
-                                  :style="{ background: getPaymentPieChartGradient(selectedMemberData) }">
-                                  <div class="absolute inset-3 bg-white rounded-full"></div>
-                             </div>
-                             
-                             <div class="flex-1 ml-4 space-y-2">
-                                 <div class="flex items-center justify-between text-[10px] text-jp-gray-2" v-if="selectedMemberData.paidCash > 0">
-                                     <div class="flex items-center"><div class="w-2.5 h-2.5 rounded-full mr-2 bg-jp-rust"></div><span>現金</span></div>
-                                     <span class="font-bold text-jp-slate">¥{{ formatNumber(selectedMemberData.paidCash) }}</span>
-                                 </div>
-                                 <div class="flex items-center justify-between text-[10px] text-jp-gray-2" v-if="selectedMemberData.paidCard > 0">
-                                     <div class="flex items-center"><div class="w-2.5 h-2.5 rounded-full mr-2 bg-jp-slate"></div><span>信用卡</span></div>
-                                     <span class="font-bold text-jp-slate">¥{{ formatNumber(selectedMemberData.paidCard) }}</span>
-                                 </div>
-                                 <div v-if="selectedMemberData.paid === 0" class="text-xs text-jp-silver italic text-center">無墊付紀錄</div>
-                             </div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-jp-mist/30">
+                    <!-- 列表 -->
+                     <div class="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-jp-mist/30">
                         <div class="bg-jp-beige/20 p-3 rounded-xl border border-jp-beige/50">
                             <span class="text-xs text-jp-gray-1 block mb-1">消費 (應付)</span>
                             <span class="block font-bold text-jp-slate text-lg">¥ {{ formatNumber(Math.round(selectedMemberData.share)) }}</span>
-                            <span class="block text-xs text-jp-gray-2 mt-0.5">NT$ {{ formatNumber(Math.round(selectedMemberData.shareTWD)) }}</span>
                         </div>
                         <div class="bg-jp-beige/20 p-3 rounded-xl border border-jp-beige/50">
                             <span class="text-xs text-jp-gray-1 block mb-1">墊付 (已付)</span>
                             <span class="block font-bold text-jp-slate text-lg">¥ {{ formatNumber(selectedMemberData.paid) }}</span>
-                            <span class="block text-xs text-jp-gray-2 mt-0.5">NT$ {{ formatNumber(selectedMemberData.paidTWD) }}</span>
-                            <div class="mt-1 pt-1 border-t border-jp-mist/30 text-[9px] text-jp-gray-1">
-                                (現金: ¥{{ formatNumber(selectedMemberData.paidCash) }} / 卡: ¥{{ formatNumber(selectedMemberData.paidCard) }})
-                            </div>
                         </div>
                     </div>
-
-                    <!-- 🧾 個人消費明細列表 (New Section) -->
-                    <div class="mt-5 border-t border-jp-mist/30 pt-4">
-                        <div class="text-xs text-jp-gray-1 mb-3 flex items-center">
-                            <i class="fa-solid fa-file-invoice mr-2"></i> 個人消費明細 (計入)
-                        </div>
-                        
-                        <div v-if="selectedMemberData.consumptionItems && selectedMemberData.consumptionItems.length > 0" class="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                            <div v-for="item in selectedMemberData.consumptionItems.sort((a,b) => new Date(b.date) - new Date(a.date))" 
-                                 :key="item.id" 
-                                 class="flex justify-between items-center bg-white border border-jp-mist/20 p-2.5 rounded-lg shadow-sm hover:border-jp-mist/50 transition-colors">
-                                <div class="flex items-center gap-3 overflow-hidden">
-                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] shrink-0" :class="getCategoryColor(item.category)">
-                                        <i :class="getCategoryIcon(item.category)"></i>
-                                    </div>
-                                    <div class="min-w-0">
-                                        <div class="text-xs font-bold text-jp-slate truncate">{{ item.name }}</div>
-                                        <div class="text-[9px] text-jp-gray-2">{{ item.date }}</div>
-                                    </div>
-                                </div>
-                                <div class="text-right shrink-0">
-                                    <div class="text-xs font-bold text-jp-slate font-mono">¥{{ formatNumber(Math.round(item.amount)) }}</div>
-                                    <div class="text-[9px] text-jp-gray-2 font-mono">NT${{ formatNumber(Math.round(item.amountTWD)) }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div v-else class="text-center py-6 text-jp-silver text-xs bg-jp-mist/10 rounded-xl">
-                            無消費紀錄
-                        </div>
-                    </div>
-
                 </div>
             </div>
 
@@ -595,11 +569,11 @@
             </div>
 
             <div class="bg-white rounded-t-3xl min-h-[400px] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] -mx-4 px-8">
-                <h3 class="font-bold text-jp-slate mb-5 flex items-center"><i class="fa-solid fa-receipt text-jp-gray-1 mr-2"></i>支出紀錄</h3>
+                <h3 class="font-bold text-jp-slate mb-5 flex items-center"><i class="fa-solid fa-receipt text-jp-gray-1 mr-2"></i>支出紀錄 (原始資料)</h3>
                 <div v-if="expenses.length === 0" class="text-center text-jp-silver py-10">尚無紀錄</div>
                 <div v-else class="space-y-4">
-                    <!-- Filtered Expenses Loop -->
-                    <div v-for="(exp, idx) in filteredExpenses" :key="idx" class="flex items-start justify-between border-b border-jp-mist/30 pb-3 last:border-0">
+                    <!-- Filtered Expenses Loop (Updated for Edit/Delete Fix) -->
+                    <div v-for="(exp, idx) in filteredExpenses" :key="exp.id" class="flex items-start justify-between border-b border-jp-mist/30 pb-3 last:border-0">
                         <div class="flex items-start">
                             <div class="w-10 h-10 rounded-full flex items-center justify-center text-white text-xs mr-3 shadow-sm shrink-0" :class="getCategoryColor(exp.category)">
                                 <i :class="getCategoryIcon(exp.category)"></i>
@@ -612,10 +586,6 @@
                                         <span class="bg-jp-mist/20 px-1.5 py-0.5 rounded text-jp-gray-2 mr-1">{{ exp.payer }}</span>
                                         <span v-if="exp.involved && exp.involved.length < members.length" class="text-jp-rust">({{ exp.involved.length }}人)</span>
                                         <span v-else>全體</span>
-                                        <span class="ml-1 text-jp-gray-2">
-                                            <i v-if="exp.payment === 'card'" class="fa-regular fa-credit-card"></i>
-                                            <i v-else class="fa-solid fa-coins"></i>
-                                        </span>
                                     </span>
                                 </p>
                             </div>
@@ -624,8 +594,9 @@
                             <p class="font-bold text-jp-slate text-sm">¥{{ formatNumber(exp.amount) }}</p>
                             <p class="text-[10px] text-jp-gray-1">NT$ {{ formatNumber(exp.amountTWD) }}</p>
                             <div class="flex justify-end gap-2 mt-1">
-                                <button @click="editExpense(exp, idx)" class="text-[10px] text-jp-silver hover:text-jp-slate"><i class="fa-solid fa-pen"></i></button>
-                                <button @click="removeExpense(idx)" class="text-[10px] text-jp-silver hover:text-jp-rust"><i class="fa-solid fa-trash-can"></i></button>
+                                <!-- Pass the expense object directly -->
+                                <button @click="editExpense(exp)" class="text-[10px] text-jp-silver hover:text-jp-slate"><i class="fa-solid fa-pen"></i></button>
+                                <button @click="removeExpense(exp)" class="text-[10px] text-jp-silver hover:text-jp-rust"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
                         </div>
                     </div>
@@ -887,6 +858,7 @@
             // New state for expense editing
             const isExpenseEditMode = ref(false);
             const editingExpenseIndex = ref(null);
+            const editingExpenseId = ref(null); // Use ID for editing tracking
 
             const newItinerary = ref({ id: null, category: 'sightseeing', name: '', startTime: '', address: '', price: '', note: '' });
             const newShoppingItem = ref({ name: '', qty: 1, category: 'souvenir', buyer: '' });
@@ -949,13 +921,47 @@
             // Removed currencyResult as it is no longer used directly in template (using calcTWD)
             const currentItinerary = computed(() => itineraryData.value[selectedDateIndex.value] || []);
             
-            // Computed for filtered expenses
+            // Computed for filtered expenses (Not used for logic, mainly display in Summary)
+            // But we created analysisItems which is smarter
             const filteredExpenses = computed(() => {
                 return expenses.value.filter(exp => {
                     const matchMember = filterMember.value === 'all' || exp.payer === filterMember.value || (exp.involved && exp.involved.includes(filterMember.value));
                     const matchCategory = filterCategory.value === 'all' || exp.category === filterCategory.value;
                     return matchMember && matchCategory;
                 }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date desc
+            });
+            
+            // The Main Logic for Analysis Section
+            const analysisItems = computed(() => {
+                let items = [];
+                if (filterMember.value === 'all') {
+                    // All: Show total expense items (Raw)
+                    items = expenses.value.map(e => ({
+                        ...e,
+                        displayAmount: e.amount,
+                        displayAmountTWD: e.amountTWD,
+                        isShare: false
+                    }));
+                } else {
+                    // Personal: Show share items from balanceSheet
+                    const memberData = balanceSheet.value.find(m => m.name === filterMember.value);
+                    if(memberData) {
+                         // We need to map consumptionItems to include 'payer' etc which I added earlier
+                         items = memberData.consumptionItems.map(item => ({
+                             ...item,
+                             displayAmount: item.amount,
+                             displayAmountTWD: item.amountTWD,
+                             isShare: true
+                         }));
+                    }
+                }
+                
+                // Filter by Category
+                if(filterCategory.value !== 'all') {
+                    items = items.filter(i => i.category === filterCategory.value);
+                }
+                
+                return items.sort((a,b) => new Date(b.date) - new Date(a.date));
             });
 
             const totalExpensesTWD = computed(() => expenses.value.filter(e => e.category !== 'transfer').reduce((sum, e) => sum + (e.amountTWD || Math.round(e.amount * (e.customRate || exchangeRate.value))), 0));
@@ -969,7 +975,7 @@
                     paidTWD: 0, shareTWD: 0, balanceTWD: 0, 
                     paidCash: 0, paidCard: 0, 
                     categoryBreakdown: {},
-                    consumptionItems: [] // New array for consumption list
+                    consumptionItems: [] 
                 });
                 
                 Object.keys(CATEGORY_MAP).forEach(cat => { members.value.forEach(m => balances[m].categoryBreakdown[cat] = 0) });
@@ -997,15 +1003,18 @@
                                     balances[p].share += shareJPY;
                                     balances[p].shareTWD += shareTWD;
                                     if(balances[p].categoryBreakdown[exp.category] !== undefined) balances[p].categoryBreakdown[exp.category] += shareJPY;
+                                    else balances[p].categoryBreakdown[exp.category] = shareJPY; // Handle newly added categories
                                     
                                     // Add to consumptionItems list
                                     balances[p].consumptionItems.push({
-                                        id: exp.id, // Store ID for potential linking
+                                        id: exp.id, 
                                         date: exp.date,
                                         name: exp.name,
                                         category: exp.category,
                                         amount: shareJPY,
-                                        amountTWD: shareTWD
+                                        amountTWD: shareTWD,
+                                        payer: exp.payer, // Ensure payer is passed
+                                        type: exp.type // Ensure type is passed
                                     });
                                 }
                             });
@@ -1036,6 +1045,40 @@
                 return `conic-gradient(${gradientParts.join(', ')})`;
             };
             
+            // Filtered Chart Data Helper
+            const getFilterPieChartGradient = (filteredList) => {
+                if (!filteredList || filteredList.length === 0) return 'conic-gradient(#ddd 0% 100%)';
+                const total = filteredList.reduce((s, e) => s + (e.displayAmount || 0), 0) || 1;
+                const breakdown = {};
+                filteredList.forEach(e => {
+                     breakdown[e.category] = (breakdown[e.category] || 0) + (e.displayAmount || 0);
+                });
+                
+                let currentAngle = 0;
+                const gradientParts = [];
+                Object.entries(breakdown).forEach(([cat, amount]) => {
+                     if (amount > 0) {
+                        const percentage = (amount / total) * 100;
+                        const color = CATEGORY_HEX[cat] || '#ccc';
+                        const start = currentAngle;
+                        const end = currentAngle + percentage;
+                        gradientParts.push(`${color} ${start}% ${end}%`);
+                        currentAngle = end;
+                     }
+                });
+                return `conic-gradient(${gradientParts.join(', ')})`;
+            };
+            
+            const getFilteredCategoryStats = (filteredList) => {
+                const breakdown = {};
+                filteredList.forEach(e => {
+                     breakdown[e.category] = (breakdown[e.category] || 0) + (e.displayAmount || 0);
+                });
+                return Object.entries(breakdown)
+                      .map(([cat, amount]) => ({ category: cat, total: amount }))
+                      .sort((a,b) => b.total - a.total);
+            };
+
             const getPaymentPieChartGradient = (memberData) => {
                 if (!memberData || (memberData.paidCash === 0 && memberData.paidCard === 0)) return 'conic-gradient(#ddd 0% 100%)';
                 const total = memberData.paidCash + memberData.paidCard;
@@ -1086,7 +1129,10 @@
                         if (doc.exists()) {
                             isRemoteUpdate.value = true; const data = doc.data();
                             if(data.shoppingList) shoppingList.value = data.shoppingList;
-                            if(data.expenses) expenses.value = data.expenses;
+                            // Ensure expenses have IDs for editing
+                            if(data.expenses) {
+                                expenses.value = data.expenses.map(e => ({...e, id: e.id || Date.now() + Math.random()}));
+                            }
                             if(data.itineraryData) { try { itineraryData.value = typeof data.itineraryData === 'string' ? JSON.parse(data.itineraryData) : data.itineraryData; } catch(e) {} }
                             if(data.mustBuyList) mustBuyList.value = data.mustBuyList;
                             if(data.exchangeRate) exchangeRate.value = data.exchangeRate;
@@ -1138,6 +1184,7 @@
                     showExpenseModal.value = true; 
                     isExpenseEditMode.value = false; // Ensure Add mode
                     editingExpenseIndex.value = null;
+                    editingExpenseId.value = null;
                 }
             };
             const toggleSelectAll = () => newExpense.value.involved = newExpense.value.involved.length === members.value.length ? [] : [...members.value];
@@ -1188,22 +1235,10 @@
             const resetShoppingForm = () => { newShoppingItem.value = { name: '', qty: 1, category: 'souvenir', buyer: members.value[0] }; };
             
             // Expense Edit Functions
-            const editExpense = (exp, idx) => {
+            const editExpense = (exp) => {
                 isExpenseEditMode.value = true;
-                // Use ID to find index if possible, fallback to idx for backward compat or direct list edit
-                // Since filtered list index != original index, we must use ID.
-                // But wait, the list view passes 'idx' which is index in filtered list! This is wrong.
-                // We need to pass the expense object itself and find its ID in the main list.
-                // Assuming exp has an ID. If not (old data), we need to handle it.
-                // Let's migrate data to have IDs.
-                
-                // Find index in main `expenses` array
-                const trueIndex = expenses.value.findIndex(e => e === exp); // Object reference equality should work if passed from v-for
-                if(trueIndex === -1) return; // Should not happen
-
-                editingExpenseIndex.value = trueIndex;
+                editingExpenseId.value = exp.id;
                 newExpense.value = JSON.parse(JSON.stringify(exp)); // Deep copy
-                
                 // Ensure number types
                 newExpense.value.amount = Number(newExpense.value.amount);
                 if(newExpense.value.amountTWD) newExpense.value.amountTWD = Number(newExpense.value.amountTWD);
@@ -1225,8 +1260,10 @@
                               : [...newExpense.value.involved]
                 };
 
-                if (isExpenseEditMode.value && editingExpenseIndex.value !== null) {
-                    expenses.value[editingExpenseIndex.value] = expenseData;
+                if (isExpenseEditMode.value && editingExpenseId.value) {
+                    // Find index by ID
+                    const idx = expenses.value.findIndex(e => e.id === editingExpenseId.value);
+                    if(idx !== -1) expenses.value[idx] = expenseData;
                 } else {
                     if (newExpense.value.type !== 'transfer' && !newExpense.value.name) return;
                     expenses.value.push(expenseData);
@@ -1235,25 +1272,16 @@
                 showExpenseModal.value = false;
                 triggerSync();
                 isExpenseEditMode.value = false;
-                editingExpenseIndex.value = null;
+                editingExpenseId.value = null;
             };
             
             const addExpense = () => { saveExpense(); }; 
             
-            // Corrected removeExpense to use object reference or ID
-            const removeExpense = (idx_or_obj) => { 
-                if(confirm("確定要刪除此筆支出嗎？")) {
-                    // Check if input is index (number) or object (from filtered list)
-                    // In template: removeExpense(idx) passes index of filtered list.
-                    // THIS IS RISKY. Better pass the object itself.
-                    // I will update template to pass `exp` instead of `idx`.
-                }
-            };
-            
-            // Updated remove function that takes the expense object
+            // Updated remove function that takes the expense object (by ID or reference)
+            // Template passes 'exp', so we remove by ID for safety
             const removeExpenseObj = (exp) => {
                 if(confirm("確定要刪除此筆支出嗎？")) {
-                    const idx = expenses.value.findIndex(e => e === exp);
+                    const idx = expenses.value.findIndex(e => e.id === exp.id);
                     if(idx !== -1) {
                         expenses.value.splice(idx, 1);
                         triggerSync();
@@ -1348,9 +1376,9 @@
                 // currencyInput is removed
                 formatNumber, exchangeRate,
                 getCategoryColor, getCategoryIcon, getWeatherIcon, openMap,
-                getShoppingCategoryColor, getShoppingCategoryIcon, getShoppingCategoryName, getPieChartGradient, getPaymentPieChartGradient,
+                getShoppingCategoryColor, getShoppingCategoryIcon, getShoppingCategoryName, getPieChartGradient, getPaymentPieChartGradient, getFilterPieChartGradient, getFilteredCategoryStats, // Added missing functions
                 showItineraryModal, showShoppingModal, showExpenseModal, isEditMode, isMustBuyEditMode, newRegionName,
-                newItinerary, newShoppingItem, newExpense, CATEGORY_HEX, CATEGORY_MAP_NAME,
+                newItinerary, newShoppingItem, newExpense, CATEGORY_HEX, CATEGORY_MAP_NAME, CATEGORY_MAP,
                 handleAddClick, saveItineraryItem, editItem, removeItineraryItem, removeItineraryItemCard,
                 addShoppingItem, removeShoppingItem, addExpense, removeExpense: removeExpenseObj, saveExpense, editExpense, // Updated removeExpense to removeExpenseObj
                 toggleSelectAll, addRegion, removeRegion, addMustBuyItem, removeMustBuyItem,
@@ -1358,7 +1386,7 @@
                 resetShoppingForm, onJPYInput, onTWDInput, onRateInput,
                 calculateTWD, calculateJPY, onExchangeRateChange,
                 calcJPY, calcTWD, filterMember, filterCategory, filteredExpenses, // Add filteredExpenses, filterMember, filterCategory
-                isExpenseEditMode, editingExpenseIndex
+                isExpenseEditMode, editingExpenseIndex, analysisItems // Added analysisItems
             }
         }
     }).mount('#app');
