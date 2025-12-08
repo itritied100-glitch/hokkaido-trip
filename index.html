@@ -212,7 +212,7 @@
                     <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
                     <div class="flex items-center bg-white/10 rounded-lg px-2 py-1 border border-white/10">
                         <span class="text-xs text-jp-sand mr-1">匯率:</span>
-                        <input type="number" v-model="exchangeRate" @change="onExchangeRateChange" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
+                        <input type="number" v-model="exchangeRate" @change="triggerSync" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
                     </div>
                 </div>
                 <div class="flex items-center justify-between gap-4 relative z-10">
@@ -823,7 +823,7 @@
             const isConnected = ref(false);
             const statusMessage = ref('連線中...');
             const exchangeRate = ref(0.22);
-            // currencyInput removed as it was causing error
+            // currencyInput removed
             const members = ref(['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟']);
             const selectedMemberName = ref(members.value[0]); 
             
@@ -927,13 +927,6 @@
                 }).sort((a, b) => new Date(b.date) - new Date(a.date)); // Sort by date desc
             });
 
-            // Calculate totals based on FILTERED expenses if we want dynamic totals, 
-            // BUT usually "Total Expenses" card should show GRAND TOTAL of the trip.
-            // However, if user filters, maybe they want to see total of filter?
-            // The request said "list ... can be filtered", usually the big total card stays grand total.
-            // But let's update the total in the filter section itself (I added a small summary there).
-            // The top card remains Grand Total.
-            
             const totalExpensesTWD = computed(() => expenses.value.filter(e => e.category !== 'transfer').reduce((sum, e) => sum + (e.amountTWD || Math.round(e.amount * (e.customRate || exchangeRate.value))), 0));
             const totalExpensesJPY = computed(() => expenses.value.filter(e => e.category !== 'transfer').reduce((sum, e) => sum + (e.amount || 0), 0));
             
