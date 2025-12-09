@@ -401,7 +401,7 @@
                 
                 <div class="flex justify-between items-end relative z-10">
                     <div>
-                        <p class="text-xs text-jp-sand mb-1">本次行程總支出</p>
+                        <p class="text-xs text-jp-sand mb-1">本次行程總支出 (不含轉帳)</p>
                         <h2 class="text-3xl font-bold tracking-tight">¥ {{ formatNumber(totalExpensesJPY) }}</h2>
                     </div>
                     <div class="text-right">
@@ -429,7 +429,7 @@
                      </select>
                  </div>
                  <div v-if="filteredExpenses.length > 0 && (filterMember !== 'all' || filterCategory !== 'all')" class="mt-2 text-right text-xs text-jp-gray-1">
-                     篩選總計: ¥{{ formatNumber(filteredExpenses.reduce((s, e) => s + e.amount, 0)) }}
+                     篩選總計 (不含轉帳): ¥{{ formatNumber(filteredExpenses.filter(e => e.category !== 'transfer' && e.type !== 'transfer').reduce((s, e) => s + e.amount, 0)) }}
                  </div>
             </div>
 
@@ -464,7 +464,7 @@
                          </div>
                      </div>
                      
-                     <!-- 🧾 詳細明細列表 (Moved here & Updated logic) -->
+                     <!-- 🧾 詳細明細列表 (Linked to Analysis) -->
                      <div class="mt-4 border-t border-jp-mist/30 pt-4">
                          <div class="text-xs text-jp-gray-1 mb-2 flex items-center justify-between">
                              <span><i class="fa-solid fa-list-ul mr-1.5"></i> 詳細明細列表</span>
@@ -553,6 +553,36 @@
                         </div>
                     </div>
                     
+                    <!-- 🧾 個人消費明細列表 (Existing Section - Note: Logic adjusted to exclude transfers by default if analysisItems handles it, but this section uses selectedMemberData.consumptionItems. The updated balanceSheet logic ensures consumptionItems EXCLUDES transfers. So this list is now pure consumption.) -->
+                    <div class="mt-5 border-t border-jp-mist/30 pt-4">
+                        <div class="text-xs text-jp-gray-1 mb-3 flex items-center">
+                            <i class="fa-solid fa-file-invoice mr-2"></i> 個人消費明細 (計入)
+                        </div>
+                        
+                        <div v-if="selectedMemberData.consumptionItems && selectedMemberData.consumptionItems.length > 0" class="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                            <div v-for="item in selectedMemberData.consumptionItems.sort((a,b) => new Date(b.date) - new Date(a.date))" 
+                                 :key="item.id" 
+                                 class="flex justify-between items-center bg-white border border-jp-mist/20 p-2.5 rounded-lg shadow-sm hover:border-jp-mist/50 transition-colors">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] shrink-0" :class="getCategoryColor(item.category)">
+                                        <i :class="getCategoryIcon(item.category)"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="text-xs font-bold text-jp-slate truncate">{{ item.name }}</div>
+                                        <div class="text-[9px] text-jp-gray-2">{{ item.date }}</div>
+                                    </div>
+                                </div>
+                                <div class="text-right shrink-0">
+                                    <div class="text-xs font-bold text-jp-slate font-mono">¥{{ formatNumber(Math.round(item.amount)) }}</div>
+                                    <div class="text-[9px] text-jp-gray-2 font-mono">NT${{ formatNumber(Math.round(item.amountTWD)) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-center py-6 text-jp-silver text-xs bg-jp-mist/10 rounded-xl">
+                            無消費紀錄
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
@@ -941,7 +971,8 @@
                 let items = [];
                 if (filterMember.value === 'all') {
                     // All: Show total expense items (Raw)
-                    items = expenses.value.map(e => ({
+                    // EXCLUDE TRANSFERS HERE
+                    items = expenses.value.filter(e => e.category !== 'transfer' && e.type !== 'transfer').map(e => ({
                         ...e,
                         displayAmount: e.amount,
                         displayAmountTWD: e.amountTWD,
@@ -949,6 +980,7 @@
                     }));
                 } else {
                     // Personal: Show share items from balanceSheet
+                    // transfers already excluded in balanceSheet logic
                     const memberData = balanceSheet.value.find(m => m.name === filterMember.value);
                     if(memberData) {
                          // We need to map consumptionItems to include 'payer' etc which I added earlier
@@ -979,6 +1011,7 @@
                     paid: 0, share: 0, balance: 0, 
                     paidTWD: 0, shareTWD: 0, balanceTWD: 0, 
                     paidCash: 0, paidCard: 0, 
+                    transferReceived: 0, // NEW field
                     categoryBreakdown: {},
                     consumptionItems: [] 
                 });
@@ -989,10 +1022,17 @@
                     const rate = exp.customRate || exchangeRate.value;
                     const jpy = exp.amount;
                     const twd = exp.amountTWD || Math.round(jpy * rate);
+                    
+                    // Robust check for transfer
+                    const isTransfer = exp.category === 'transfer' || exp.type === 'transfer';
 
-                    if (exp.category === 'transfer') {
+                    if (isTransfer) {
                         if (balances[exp.payer]) { balances[exp.payer].paid += jpy; balances[exp.payer].paidTWD += twd; }
-                        if (balances[exp.involved[0]]) { balances[exp.involved[0]].share += jpy; balances[exp.involved[0]].shareTWD += twd; }
+                        // For transfer, the receiver (involved[0]) gets "transferReceived", NOT share.
+                        if (balances[exp.involved[0]]) { 
+                            // balances[exp.involved[0]].share += jpy; // OLD LOGIC REMOVED
+                            balances[exp.involved[0]].transferReceived += jpy; // NEW LOGIC
+                        }
                     } else {
                         if (balances[exp.payer]) { 
                             balances[exp.payer].paid += jpy; 
@@ -1026,7 +1066,12 @@
                         }
                     }
                 });
-                return Object.values(balances).map(m => { m.balance = Math.round(m.paid - m.share); m.balanceTWD = Math.round(m.paidTWD - m.shareTWD); return m; });
+                // Updated balance formula: Paid - Share - ReceivedTransfer
+                return Object.values(balances).map(m => { 
+                    m.balance = Math.round(m.paid - m.share - m.transferReceived); 
+                    m.balanceTWD = Math.round(m.paidTWD - m.shareTWD - (m.transferReceived * exchangeRate.value)); // approx
+                    return m; 
+                });
             });
 
             const selectedMemberData = computed(() => balanceSheet.value.find(m => m.name === selectedMemberName.value));
@@ -1255,6 +1300,11 @@
 
             const saveExpense = () => {
                 if (!newExpense.value.amount) return;
+
+                // Fix: Force category to 'transfer' if type is 'transfer'
+                if (newExpense.value.type === 'transfer') {
+                    newExpense.value.category = 'transfer';
+                }
 
                 const expenseData = {
                     ...newExpense.value,
