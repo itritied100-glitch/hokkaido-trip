@@ -464,7 +464,7 @@
                          </div>
                      </div>
                      
-                     <!-- 🧾 詳細明細列表 (Moved here & Updated logic) -->
+                     <!-- 🧾 詳細明細列表 (Linked to Analysis) -->
                      <div class="mt-4 border-t border-jp-mist/30 pt-4">
                          <div class="text-xs text-jp-gray-1 mb-2 flex items-center justify-between">
                              <span><i class="fa-solid fa-list-ul mr-1.5"></i> 詳細明細列表</span>
@@ -488,9 +488,6 @@
                                  <div class="text-right shrink-0">
                                      <div class="text-xs font-bold text-jp-slate font-mono">¥{{ formatNumber(Math.round(exp.displayAmount)) }}</div>
                                      <div class="text-[9px] text-jp-gray-1 font-mono">NT$ {{ formatNumber(Math.round(exp.displayAmountTWD)) }}</div>
-                                     <div class="flex justify-end gap-1 mt-1">
-                                        <button @click="copyExpense(exp)" class="text-[9px] text-jp-silver hover:text-jp-sage"><i class="fa-regular fa-copy"></i></button>
-                                     </div>
                                  </div>
                              </div>
                          </div>
@@ -554,6 +551,7 @@
                             <span class="block font-bold text-jp-slate text-lg">¥ {{ formatNumber(selectedMemberData.paid) }}</span>
                         </div>
                     </div>
+                    
                 </div>
             </div>
 
