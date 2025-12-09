@@ -464,7 +464,7 @@
                          </div>
                      </div>
                      
-                     <!-- 🧾 詳細明細列表 (Linked to Analysis) -->
+                     <!-- 🧾 詳細明細列表 (Moved here & Updated logic) -->
                      <div class="mt-4 border-t border-jp-mist/30 pt-4">
                          <div class="text-xs text-jp-gray-1 mb-2 flex items-center justify-between">
                              <span><i class="fa-solid fa-list-ul mr-1.5"></i> 詳細明細列表</span>
@@ -481,7 +481,6 @@
                                          <div class="text-[9px] text-jp-gray-2 flex items-center">
                                             <span class="mr-2">{{ exp.date }}</span>
                                             <span v-if="exp.isShare" class="text-jp-rust">分攤額 (由 {{ exp.payer }} 墊付)</span>
-                                            <span v-else-if="exp.category === 'transfer'" class="text-jp-sage">轉帳</span>
                                             <span v-else>{{ exp.payer }} 墊付</span>
                                          </div>
                                      </div>
@@ -489,6 +488,9 @@
                                  <div class="text-right shrink-0">
                                      <div class="text-xs font-bold text-jp-slate font-mono">¥{{ formatNumber(Math.round(exp.displayAmount)) }}</div>
                                      <div class="text-[9px] text-jp-gray-1 font-mono">NT$ {{ formatNumber(Math.round(exp.displayAmountTWD)) }}</div>
+                                     <div class="flex justify-end gap-1 mt-1">
+                                        <button @click="copyExpense(exp)" class="text-[9px] text-jp-silver hover:text-jp-sage"><i class="fa-regular fa-copy"></i></button>
+                                     </div>
                                  </div>
                              </div>
                          </div>
@@ -552,37 +554,6 @@
                             <span class="block font-bold text-jp-slate text-lg">¥ {{ formatNumber(selectedMemberData.paid) }}</span>
                         </div>
                     </div>
-                    
-                    <!-- 🧾 個人消費明細列表 (Existing Section - Note: Logic adjusted to exclude transfers by default if analysisItems handles it, but this section uses selectedMemberData.consumptionItems. The updated balanceSheet logic ensures consumptionItems EXCLUDES transfers. So this list is now pure consumption.) -->
-                    <div class="mt-5 border-t border-jp-mist/30 pt-4">
-                        <div class="text-xs text-jp-gray-1 mb-3 flex items-center">
-                            <i class="fa-solid fa-file-invoice mr-2"></i> 個人消費明細 (計入)
-                        </div>
-                        
-                        <div v-if="selectedMemberData.consumptionItems && selectedMemberData.consumptionItems.length > 0" class="space-y-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                            <div v-for="item in selectedMemberData.consumptionItems.sort((a,b) => new Date(b.date) - new Date(a.date))" 
-                                 :key="item.id" 
-                                 class="flex justify-between items-center bg-white border border-jp-mist/20 p-2.5 rounded-lg shadow-sm hover:border-jp-mist/50 transition-colors">
-                                <div class="flex items-center gap-3 overflow-hidden">
-                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] shrink-0" :class="getCategoryColor(item.category)">
-                                        <i :class="getCategoryIcon(item.category)"></i>
-                                    </div>
-                                    <div class="min-w-0">
-                                        <div class="text-xs font-bold text-jp-slate truncate">{{ item.name }}</div>
-                                        <div class="text-[9px] text-jp-gray-2">{{ item.date }}</div>
-                                    </div>
-                                </div>
-                                <div class="text-right shrink-0">
-                                    <div class="text-xs font-bold text-jp-slate font-mono">¥{{ formatNumber(Math.round(item.amount)) }}</div>
-                                    <div class="text-[9px] text-jp-gray-2 font-mono">NT${{ formatNumber(Math.round(item.amountTWD)) }}</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div v-else class="text-center py-6 text-jp-silver text-xs bg-jp-mist/10 rounded-xl">
-                            無消費紀錄
-                        </div>
-                    </div>
-
                 </div>
             </div>
 
@@ -631,6 +602,7 @@
                             <p class="text-[10px] text-jp-gray-1">NT$ {{ formatNumber(exp.amountTWD) }}</p>
                             <div class="flex justify-end gap-2 mt-1">
                                 <!-- Pass the expense object directly -->
+                                <button @click="copyExpense(exp)" class="text-[10px] text-jp-silver hover:text-jp-sage"><i class="fa-regular fa-copy"></i></button>
                                 <button @click="editExpense(exp)" class="text-[10px] text-jp-silver hover:text-jp-slate"><i class="fa-solid fa-pen"></i></button>
                                 <button @click="removeExpense(exp)" class="text-[10px] text-jp-silver hover:text-jp-rust"><i class="fa-solid fa-trash-can"></i></button>
                             </div>
@@ -1297,6 +1269,19 @@
                 if(newExpense.value.customRate) newExpense.value.customRate = Number(newExpense.value.customRate);
                 showExpenseModal.value = true;
             };
+            
+            // Define the copyExpense function
+            const copyExpense = (exp) => {
+                const text = `${exp.date} ${exp.name} ¥${exp.amount} (付款: ${exp.payer})`;
+                const textArea = document.createElement("textarea");
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("copy"); 
+                document.body.removeChild(textArea);
+                statusMessage.value = "已複製";
+                setTimeout(() => statusMessage.value = isConnected.value ? "連線正常" : "未連線", 2000);
+            };
 
             const saveExpense = () => {
                 if (!newExpense.value.amount) return;
@@ -1443,7 +1428,8 @@
                 resetShoppingForm, onJPYInput, onTWDInput, onRateInput,
                 calculateTWD, calculateJPY, onExchangeRateChange,
                 calcJPY, calcTWD, filterMember, filterCategory, filteredExpenses, analysisItems, // Added analysisItems
-                isExpenseEditMode, editingExpenseIndex
+                isExpenseEditMode, editingExpenseIndex,
+                copyExpense // Make sure this is returned
             }
         }
     }).mount('#app');
