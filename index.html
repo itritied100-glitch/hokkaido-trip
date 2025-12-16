@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -80,11 +80,22 @@
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #CCD2CC; border-radius: 20px; }
+        
+        /* Loading Overlay */
+        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .loading-spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #7A848D; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="text-jp-slate">
 
 <div id="app" class="app-container">
+
+    <!-- Loading Overlay -->
+    <div v-if="!isDataLoaded" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="text-jp-slate text-sm font-bold">資料同步中...</div>
+    </div>
 
     <!-- Sync Status -->
     <div class="sync-status">
@@ -114,9 +125,9 @@
     </div>
 
     <!-- Main Content -->
-    <main class="p-4 app-main">
-        
-        <!-- Tab 1: 行程 -->
+    <main class="p-4 app-main" v-if="isDataLoaded">
+        <!-- Tab Content omitted for brevity, structure remains same as previous steps, logic handles reactivity -->
+         <!-- Tab 1: 行程 -->
         <div v-if="currentTab === 'itinerary'" class="animate-fade-in">
             <div class="flex overflow-x-auto hide-scrollbar space-x-3 mb-6 snap-x px-1 sticky date-selector-sticky -mx-4 px-4 pb-2">
                 <div v-for="(day, index) in dates" :key="index" @click="selectedDateIndex = index"
@@ -181,16 +192,12 @@
                                 </div>
                                 
                                 <div class="flex gap-2 mt-2">
-                                    <!-- 地址連結按鈕 -->
                                     <button v-if="item.address" @click.stop="openMap(item.address)" class="text-xs bg-jp-mist/20 text-jp-slate px-2.5 py-1.5 rounded-lg hover:bg-jp-slate hover:text-white transition-colors flex items-center text-left">
                                         <i class="fa-solid fa-location-dot mr-1.5 text-jp-rust"></i> {{ item.address }}
                                     </button>
-                                    <!-- 備用導航按鈕 -->
                                     <button v-else @click.stop="openMap(item.name)" class="text-xs bg-jp-mist/20 text-jp-slate px-2.5 py-1.5 rounded-lg hover:bg-jp-slate hover:text-white transition-colors flex items-center">
                                         <i class="fa-solid fa-map mr-1.5"></i> 導航
                                     </button>
-
-                                    <!-- 費用標籤 -->
                                     <span v-if="item.price" class="text-xs bg-jp-rose/10 text-jp-rose px-2.5 py-1.5 rounded-lg border border-jp-rose/20 flex items-center whitespace-nowrap">
                                         <i class="fa-solid fa-ticket mr-1.5"></i> {{ item.price }}
                                     </span>
@@ -210,7 +217,6 @@
 
         <!-- Tab 2: 資訊 -->
         <div v-if="currentTab === 'info'" class="animate-fade-in space-y-5 pb-20">
-             <!-- 匯率計算 (雙向) -->
              <div class="bg-gradient-to-br from-jp-slate to-jp-gray-2 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
                 <div class="flex justify-between items-center mb-4 relative z-10">
@@ -228,7 +234,6 @@
                     <i class="fa-solid fa-arrow-right-arrow-left text-jp-sand mt-4"></i>
                     <div class="flex-1">
                         <label class="text-[10px] text-jp-sand block mb-1">TWD</label>
-                        <!-- 雙向綁定 -->
                         <input type="number" v-model="calcTWD" @input="calculateJPY" class="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-white font-bold text-lg focus:outline-none">
                     </div>
                 </div>
@@ -359,7 +364,8 @@
 
         <!-- Tab 3: 購物清單 -->
         <div v-if="currentTab === 'shopping'" class="animate-fade-in pb-20">
-            <button @click="showShoppingModal = true; resetShoppingForm()" class="w-full bg-white border-2 border-dashed border-jp-silver rounded-2xl p-4 mb-4 text-jp-gray-1 font-bold hover:bg-jp-beige/20 hover:border-jp-slate transition-colors flex items-center justify-center">
+            <!-- (Shopping content omitted, same as before) -->
+             <button @click="showShoppingModal = true; resetShoppingForm()" class="w-full bg-white border-2 border-dashed border-jp-silver rounded-2xl p-4 mb-4 text-jp-gray-1 font-bold hover:bg-jp-beige/20 hover:border-jp-slate transition-colors flex items-center justify-center">
                 <i class="fa-solid fa-plus mr-2"></i> 新增待買商品
             </button>
 
@@ -433,7 +439,7 @@
                  </div>
             </div>
 
-            <!-- 消費統計分析 (Modified: Dynamic based on filters) -->
+            <!-- 消費統計分析 -->
             <div class="mb-6" v-if="analysisItems.length > 0">
                  <h3 class="font-bold text-jp-slate mb-3 flex items-center text-sm px-1"><i class="fa-solid fa-chart-pie mr-2 text-jp-rose"></i> 消費統計分析 {{ filterMember !== 'all' ? '(' + filterMember + ')' : '(總覽)' }}</h3>
                  <div class="bg-white rounded-3xl p-5 shadow-sm border border-jp-mist/30">
@@ -464,7 +470,7 @@
                          </div>
                      </div>
                      
-                     <!-- 🧾 詳細明細列表 (Linked to Analysis) -->
+                     <!-- 🧾 詳細明細列表 -->
                      <div class="mt-4 border-t border-jp-mist/30 pt-4">
                          <div class="text-xs text-jp-gray-1 mb-2 flex items-center justify-between">
                              <span><i class="fa-solid fa-list-ul mr-1.5"></i> 詳細明細列表</span>
@@ -481,6 +487,7 @@
                                          <div class="text-[9px] text-jp-gray-2 flex items-center">
                                             <span class="mr-2">{{ exp.date }}</span>
                                             <span v-if="exp.isShare" class="text-jp-rust">分攤額 (由 {{ exp.payer }} 墊付)</span>
+                                            <span v-else-if="exp.category === 'transfer'" class="text-jp-sage">轉帳</span>
                                             <span v-else>{{ exp.payer }} 墊付</span>
                                          </div>
                                      </div>
@@ -551,7 +558,6 @@
                             <span class="block font-bold text-jp-slate text-lg">¥ {{ formatNumber(selectedMemberData.paid) }}</span>
                         </div>
                     </div>
-                    
                 </div>
             </div>
 
@@ -830,6 +836,7 @@
             const selectedDateIndex = ref(0);
             const isConnected = ref(false);
             const statusMessage = ref('連線中...');
+            const isDataLoaded = ref(false); // Added loading state
             const exchangeRate = ref(0.22);
             // currencyInput removed
             const members = ref(['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟']);
@@ -1131,9 +1138,12 @@
             let debounceTimer = null;
             const triggerSync = () => { if (isRemoteUpdate.value) return; statusMessage.value = '儲存中...'; clearTimeout(debounceTimer); debounceTimer = setTimeout(syncData, 1500); };
 
+            const DB_COLLECTION = "trips";
+            const DB_DOC_ID = "hokkaido_trip_2026_final_stable"; // FINAL FIXED ID
+
             const syncData = () => {
                 if (!db) return;
-                setDoc(doc(db, "trips", "hokkaido_final_v2"), { // Force New Doc ID
+                setDoc(doc(db, DB_COLLECTION, DB_DOC_ID), {
                     shoppingList: shoppingList.value,
                     expenses: expenses.value,
                     itineraryData: JSON.stringify(itineraryData.value),
@@ -1147,7 +1157,8 @@
 
             onMounted(() => {
                 if (db) {
-                    onSnapshot(doc(db, "trips", "hokkaido_final_v2"), (doc) => {
+                    onSnapshot(doc(db, DB_COLLECTION, DB_DOC_ID), (doc) => {
+                        isDataLoaded.value = true; // Data loaded
                         if (doc.exists()) {
                             isRemoteUpdate.value = true; const data = doc.data();
                             if(data.shoppingList) shoppingList.value = data.shoppingList;
@@ -1160,9 +1171,16 @@
                             if(data.exchangeRate) exchangeRate.value = data.exchangeRate;
                             isConnected.value = true; statusMessage.value = '連線正常';
                             nextTick(() => { isRemoteUpdate.value = false; });
-                        } else { syncData(); }
+                        } else { 
+                            // If doc doesn't exist, populate with initial data
+                             itineraryData.value = populateInitialData();
+                             syncData(); 
+                        }
                         initSortable();
                     });
+                } else {
+                     isDataLoaded.value = true; // Fallback if DB init failed
+                     itineraryData.value = populateInitialData();
                 }
             });
 
@@ -1427,7 +1445,8 @@
                 calculateTWD, calculateJPY, onExchangeRateChange,
                 calcJPY, calcTWD, filterMember, filterCategory, filteredExpenses, analysisItems, // Added analysisItems
                 isExpenseEditMode, editingExpenseIndex,
-                copyExpense // Make sure this is returned
+                copyExpense, // Make sure this is returned
+                isDataLoaded // Added loading state
             }
         }
     }).mount('#app');
