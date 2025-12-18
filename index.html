@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -68,6 +68,7 @@
         .sync-dot { width: 6px; height: 6px; border-radius: 50%; background-color: #976666; }
         .sync-dot.online { background-color: #A9B7AA; box-shadow: 0 0 5px #A9B7AA; }
         .sync-dot.busy { background-color: #DBD4C6; animation: pulse 1s infinite; }
+        .sync-dot.error { background-color: #EF5350; box-shadow: 0 0 5px #EF5350; animation: none; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         .pie-chart { border-radius: 50%; transition: all 0.5s ease; }
         .drag-handle { cursor: move; touch-action: none; }
@@ -126,8 +127,8 @@
 
     <!-- Main Content -->
     <main class="p-4 app-main" v-if="isDataLoaded">
-        <!-- Tab Content omitted for brevity, structure remains same as previous steps, logic handles reactivity -->
-         <!-- Tab 1: 行程 -->
+        
+        <!-- Tab 1: 行程 -->
         <div v-if="currentTab === 'itinerary'" class="animate-fade-in">
             <div class="flex overflow-x-auto hide-scrollbar space-x-3 mb-6 snap-x px-1 sticky date-selector-sticky -mx-4 px-4 pb-2">
                 <div v-for="(day, index) in dates" :key="index" @click="selectedDateIndex = index"
@@ -192,12 +193,16 @@
                                 </div>
                                 
                                 <div class="flex gap-2 mt-2">
+                                    <!-- 地址連結按鈕 -->
                                     <button v-if="item.address" @click.stop="openMap(item.address)" class="text-xs bg-jp-mist/20 text-jp-slate px-2.5 py-1.5 rounded-lg hover:bg-jp-slate hover:text-white transition-colors flex items-center text-left">
                                         <i class="fa-solid fa-location-dot mr-1.5 text-jp-rust"></i> {{ item.address }}
                                     </button>
+                                    <!-- 備用導航按鈕 -->
                                     <button v-else @click.stop="openMap(item.name)" class="text-xs bg-jp-mist/20 text-jp-slate px-2.5 py-1.5 rounded-lg hover:bg-jp-slate hover:text-white transition-colors flex items-center">
                                         <i class="fa-solid fa-map mr-1.5"></i> 導航
                                     </button>
+
+                                    <!-- 費用標籤 -->
                                     <span v-if="item.price" class="text-xs bg-jp-rose/10 text-jp-rose px-2.5 py-1.5 rounded-lg border border-jp-rose/20 flex items-center whitespace-nowrap">
                                         <i class="fa-solid fa-ticket mr-1.5"></i> {{ item.price }}
                                     </span>
@@ -223,7 +228,7 @@
                     <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
                     <div class="flex items-center bg-white/10 rounded-lg px-2 py-1 border border-white/10">
                         <span class="text-xs text-jp-sand mr-1">匯率:</span>
-                        <input type="number" v-model="exchangeRate" @change="triggerSync" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
+                        <input type="number" v-model="exchangeRate" @change="onExchangeRateChange" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
                     </div>
                 </div>
                 <div class="flex items-center justify-between gap-4 relative z-10">
@@ -364,8 +369,7 @@
 
         <!-- Tab 3: 購物清單 -->
         <div v-if="currentTab === 'shopping'" class="animate-fade-in pb-20">
-            <!-- (Shopping content omitted, same as before) -->
-             <button @click="showShoppingModal = true; resetShoppingForm()" class="w-full bg-white border-2 border-dashed border-jp-silver rounded-2xl p-4 mb-4 text-jp-gray-1 font-bold hover:bg-jp-beige/20 hover:border-jp-slate transition-colors flex items-center justify-center">
+            <button @click="showShoppingModal = true; resetShoppingForm()" class="w-full bg-white border-2 border-dashed border-jp-silver rounded-2xl p-4 mb-4 text-jp-gray-1 font-bold hover:bg-jp-beige/20 hover:border-jp-slate transition-colors flex items-center justify-center">
                 <i class="fa-solid fa-plus mr-2"></i> 新增待買商品
             </button>
 
@@ -558,6 +562,7 @@
                             <span class="block font-bold text-jp-slate text-lg">¥ {{ formatNumber(selectedMemberData.paid) }}</span>
                         </div>
                     </div>
+                    
                 </div>
             </div>
 
@@ -816,6 +821,7 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { createApp, ref, computed, onMounted, watch, nextTick } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
     const firebaseConfig = {
@@ -827,8 +833,14 @@
       appId: "1:802810791692:web:b161ebee4e105f5bda6b29"
     };
 
+    let app;
     let db;
-    try { const app = initializeApp(firebaseConfig); db = getFirestore(app); } catch (e) { console.error("Firebase Init Failed", e); }
+    let auth;
+    try { 
+        app = initializeApp(firebaseConfig); 
+        db = getFirestore(app);
+        auth = getAuth(app);
+    } catch (e) { console.error("Firebase Init Failed", e); }
 
     createApp({
         setup() {
@@ -1134,12 +1146,18 @@
                 return result;
             });
 
-            const syncStatusClass = computed(() => { if(statusMessage.value === '儲存中...') return 'busy'; if(isConnected.value) return 'online'; return ''; });
+            const syncStatusClass = computed(() => { 
+                if (statusMessage.value.includes('失敗')) return 'error';
+                if(statusMessage.value === '儲存中...') return 'busy'; 
+                if(isConnected.value) return 'online'; 
+                return ''; 
+            });
+            
             let debounceTimer = null;
             const triggerSync = () => { if (isRemoteUpdate.value) return; statusMessage.value = '儲存中...'; clearTimeout(debounceTimer); debounceTimer = setTimeout(syncData, 1500); };
 
             const DB_COLLECTION = "trips";
-            const DB_DOC_ID = "hokkaido_trip_2026_final_stable"; // FINAL FIXED ID
+            const DB_DOC_ID = "hokkaido_trip_2026_persistent"; // Changed to persistent ID
 
             const syncData = () => {
                 if (!db) return;
@@ -1150,37 +1168,53 @@
                     mustBuyList: mustBuyList.value,
                     exchangeRate: exchangeRate.value,
                     lastUpdated: new Date()
-                }).then(() => { statusMessage.value = '已同步'; isConnected.value = true; }).catch(err => { statusMessage.value = '同步失敗'; });
+                }).then(() => { statusMessage.value = '已同步'; isConnected.value = true; }).catch(err => { statusMessage.value = '同步失敗'; console.error(err); });
             };
 
             watch([shoppingList, expenses, itineraryData, mustBuyList, exchangeRate], () => { if (isRemoteUpdate.value) return; triggerSync(); }, { deep: true });
 
-            onMounted(() => {
-                if (db) {
-                    onSnapshot(doc(db, DB_COLLECTION, DB_DOC_ID), (doc) => {
-                        isDataLoaded.value = true; // Data loaded
-                        if (doc.exists()) {
-                            isRemoteUpdate.value = true; const data = doc.data();
-                            if(data.shoppingList) shoppingList.value = data.shoppingList;
-                            // Ensure expenses have IDs for editing
-                            if(data.expenses) {
-                                expenses.value = data.expenses.map(e => ({...e, id: e.id || Date.now() + Math.random()}));
+            onMounted(async () => {
+                if (auth) {
+                    try {
+                        await signInAnonymously(auth);
+                        // console.log("User signed in anonymously");
+                        
+                        onSnapshot(doc(db, DB_COLLECTION, DB_DOC_ID), (docSnapshot) => {
+                            isDataLoaded.value = true;
+                            if (docSnapshot.exists()) {
+                                isRemoteUpdate.value = true;
+                                const data = docSnapshot.data();
+                                if(data.shoppingList) shoppingList.value = data.shoppingList;
+                                if(data.expenses) {
+                                    expenses.value = data.expenses.map(e => ({...e, id: e.id || Date.now() + Math.random()}));
+                                }
+                                if(data.itineraryData) { try { itineraryData.value = typeof data.itineraryData === 'string' ? JSON.parse(data.itineraryData) : data.itineraryData; } catch(e) {} }
+                                if(data.mustBuyList) mustBuyList.value = data.mustBuyList;
+                                if(data.exchangeRate) exchangeRate.value = data.exchangeRate;
+                                isConnected.value = true; 
+                                statusMessage.value = '連線正常';
+                                nextTick(() => { isRemoteUpdate.value = false; });
+                            } else {
+                                // Only populate if doc really doesn't exist and we are connected
+                                console.log("No document found, initializing...");
+                                itineraryData.value = populateInitialData();
+                                syncData();
                             }
-                            if(data.itineraryData) { try { itineraryData.value = typeof data.itineraryData === 'string' ? JSON.parse(data.itineraryData) : data.itineraryData; } catch(e) {} }
-                            if(data.mustBuyList) mustBuyList.value = data.mustBuyList;
-                            if(data.exchangeRate) exchangeRate.value = data.exchangeRate;
-                            isConnected.value = true; statusMessage.value = '連線正常';
-                            nextTick(() => { isRemoteUpdate.value = false; });
-                        } else { 
-                            // If doc doesn't exist, populate with initial data
-                             itineraryData.value = populateInitialData();
-                             syncData(); 
-                        }
-                        initSortable();
-                    });
+                            initSortable();
+                        }, (error) => {
+                            console.error("Snapshot error:", error);
+                            statusMessage.value = "讀取失敗: " + error.code;
+                            isDataLoaded.value = true; // Show content even if error, might be empty
+                        });
+
+                    } catch (error) {
+                        console.error("Auth Error:", error);
+                        statusMessage.value = "登入失敗";
+                        isDataLoaded.value = true;
+                    }
                 } else {
-                     isDataLoaded.value = true; // Fallback if DB init failed
-                     itineraryData.value = populateInitialData();
+                    isDataLoaded.value = true; // Fallback
+                    itineraryData.value = populateInitialData();
                 }
             });
 
