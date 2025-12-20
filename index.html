@@ -14,7 +14,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- SortableJS (For Drag and Drop) -->
+    <!-- SortableJS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
     <script>
@@ -173,7 +173,7 @@
                         </div>
                     </div>
                     
-                    <div class="bg-white rounded-2xl p-4 card-shadow relative z-10">
+                    <div class="bg-white rounded-2xl p-4 card-shadow relative z-10 cursor-move">
                         <div class="flex items-start gap-3">
                             <div class="flex flex-col items-center min-w-[50px]">
                                 <div class="w-10 h-10 rounded-full flex items-center justify-center text-white shadow-md text-sm mb-1" :class="getCategoryColor(item.category)">
@@ -222,13 +222,14 @@
 
         <!-- Tab 2: 資訊 -->
         <div v-if="currentTab === 'info'" class="animate-fade-in space-y-5 pb-20">
+             <!-- 匯率計算 (雙向) -->
              <div class="bg-gradient-to-br from-jp-slate to-jp-gray-2 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
                 <div class="flex justify-between items-center mb-4 relative z-10">
                     <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
                     <div class="flex items-center bg-white/10 rounded-lg px-2 py-1 border border-white/10">
                         <span class="text-xs text-jp-sand mr-1">匯率:</span>
-                        <input type="number" v-model="exchangeRate" @change="onExchangeRateChange" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
+                        <input type="number" v-model="exchangeRate" @change="triggerSync" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
                     </div>
                 </div>
                 <div class="flex items-center justify-between gap-4 relative z-10">
@@ -443,7 +444,7 @@
                  </div>
             </div>
 
-            <!-- 消費統計分析 -->
+            <!-- 消費統計分析 (Modified: Dynamic based on filters) -->
             <div class="mb-6" v-if="analysisItems.length > 0">
                  <h3 class="font-bold text-jp-slate mb-3 flex items-center text-sm px-1"><i class="fa-solid fa-chart-pie mr-2 text-jp-rose"></i> 消費統計分析 {{ filterMember !== 'all' ? '(' + filterMember + ')' : '(總覽)' }}</h3>
                  <div class="bg-white rounded-3xl p-5 shadow-sm border border-jp-mist/30">
@@ -474,7 +475,7 @@
                          </div>
                      </div>
                      
-                     <!-- 🧾 詳細明細列表 -->
+                     <!-- 🧾 詳細明細列表 (Linked to Analysis) -->
                      <div class="mt-4 border-t border-jp-mist/30 pt-4">
                          <div class="text-xs text-jp-gray-1 mb-2 flex items-center justify-between">
                              <span><i class="fa-solid fa-list-ul mr-1.5"></i> 詳細明細列表</span>
@@ -821,17 +822,12 @@
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { createApp, ref, computed, onMounted, watch, nextTick } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDqqag1anowaW3XPQejcYZl8lUTgE7FRWs",
-      authDomain: "hokkaido-trip-55b8f.firebaseapp.com",
-      projectId: "hokkaido-trip-55b8f",
-      storageBucket: "hokkaido-trip-55b8f.firebasestorage.app",
-      messagingSenderId: "802810791692",
-      appId: "1:802810791692:web:b161ebee4e105f5bda6b29"
-    };
+    // Use system config
+    const firebaseConfig = JSON.parse(__firebase_config);
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
     let app;
     let db;
@@ -1156,18 +1152,22 @@
             let debounceTimer = null;
             const triggerSync = () => { if (isRemoteUpdate.value) return; statusMessage.value = '儲存中...'; clearTimeout(debounceTimer); debounceTimer = setTimeout(syncData, 1500); };
 
-            const DB_COLLECTION = "trips";
-            const DB_DOC_ID = "hokkaido_trip_2026_persistent"; // Changed to persistent ID
+            const DB_COLLECTION = "hokkaido_trip_v4"; // Using proper collection name structure for the app
+            const DB_DOC_ID = "main_data";
 
             const syncData = () => {
-                if (!db) return;
-                setDoc(doc(db, DB_COLLECTION, DB_DOC_ID), {
+                if (!db || !auth.currentUser) return; // Ensure auth
+                
+                const userId = auth.currentUser.uid;
+                // Path: artifacts/{appId}/public/data/{collectionName}/{docId}
+                // We use public data for sharing
+                setDoc(doc(db, 'artifacts', appId, 'public', 'data', DB_COLLECTION, DB_DOC_ID), {
                     shoppingList: shoppingList.value,
                     expenses: expenses.value,
                     itineraryData: JSON.stringify(itineraryData.value),
                     mustBuyList: mustBuyList.value,
                     exchangeRate: exchangeRate.value,
-                    lastUpdated: new Date()
+                    lastUpdated: new Date().toISOString() // Store as ISO string
                 }).then(() => { statusMessage.value = '已同步'; isConnected.value = true; }).catch(err => { statusMessage.value = '同步失敗'; console.error(err); });
             };
 
@@ -1176,10 +1176,16 @@
             onMounted(async () => {
                 if (auth) {
                     try {
-                        await signInAnonymously(auth);
-                        // console.log("User signed in anonymously");
+                        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                            await signInWithCustomToken(auth, __initial_auth_token);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
                         
-                        onSnapshot(doc(db, DB_COLLECTION, DB_DOC_ID), (docSnapshot) => {
+                        // Path: artifacts/{appId}/public/data/{collectionName}/{docId}
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', DB_COLLECTION, DB_DOC_ID);
+                        
+                        onSnapshot(docRef, (docSnapshot) => {
                             isDataLoaded.value = true;
                             if (docSnapshot.exists()) {
                                 isRemoteUpdate.value = true;
