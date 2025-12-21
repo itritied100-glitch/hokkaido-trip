@@ -110,7 +110,7 @@
     <!-- Header -->
     <div class="header-bg">
         <div class="header-image-container">
-            <img src="./banner.jpg"
+            <img src="./image_ec3041.jpg" 
                  onerror="this.src='https://images.unsplash.com/photo-1548578709-32269a838573?q=80&w=1920&auto=format&fit=crop'"
                  alt="北海道家族旅行">
             <div class="banner-text-overlay"></div>
@@ -232,7 +232,7 @@
                     <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
                     <div class="flex items-center bg-white/10 rounded-lg px-2 py-1 border border-white/10">
                         <span class="text-xs text-jp-sand mr-1">匯率:</span>
-                        <input type="number" v-model="exchangeRate" @change="onExchangeRateChange" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
+                        <input type="number" v-model="exchangeRate" @change="triggerSync" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
                     </div>
                 </div>
                 <div class="flex items-center justify-between gap-4 relative z-10">
@@ -863,9 +863,9 @@
             const statusMessage = ref('連線中...');
             const isDataLoaded = ref(false); 
             const exchangeRate = ref(0.22);
-            // currencyInput removed
             const members = ref(['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟']);
             const selectedMemberName = ref(members.value[0]); 
+            let sortableInstance = null;
             
             const shoppingCategories = [
                 { id: 'souvenir', name: '伴手禮', color: 'bg-jp-rose', icon: 'fa-solid fa-gift' },
@@ -1160,7 +1160,7 @@
             });
 
             const syncStatusClass = computed(() => { 
-                if (statusMessage.value.includes('失敗')) return 'error';
+                if (statusMessage.value.includes('失敗') || statusMessage.value.includes('離線')) return 'error';
                 if(statusMessage.value === '儲存中...') return 'busy'; 
                 if(isConnected.value) return 'online'; 
                 return ''; 
@@ -1175,7 +1175,6 @@
             const syncData = () => {
                 if (!db || !auth || !auth.currentUser) return; // Ensure auth
                 
-                const userId = auth.currentUser.uid;
                 // Path: artifacts/{appId}/public/data/{collectionName}/{docId}
                 // We use public data for sharing
                 setDoc(doc(db, 'artifacts', appId, 'public', 'data', DB_COLLECTION, DB_DOC_ID), {
@@ -1254,11 +1253,19 @@
             });
 
             const initSortable = () => {
+                // Clean up old instance first
+                if (sortableInstance) {
+                    sortableInstance.destroy();
+                    sortableInstance = null;
+                }
+
                 const el = document.getElementById('itinerary-list');
                 if (el) {
-                    Sortable.create(el, {
+                    sortableInstance = Sortable.create(el, {
                         handle: '.drag-handle',
                         animation: 150,
+                        delay: 100, // Touch delay
+                        delayOnTouchOnly: true, // Only delay on touch devices
                         onEnd: (evt) => {
                             const list = itineraryData.value[selectedDateIndex.value];
                             const item = list.splice(evt.oldIndex, 1)[0];
