@@ -14,7 +14,7 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- SortableJS -->
+    <!-- SortableJS (For Drag and Drop) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
     <script>
@@ -71,7 +71,8 @@
         .sync-dot.error { background-color: #EF5350; box-shadow: 0 0 5px #EF5350; animation: none; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         .pie-chart { border-radius: 50%; transition: all 0.5s ease; }
-        .drag-handle { cursor: move; touch-action: none; }
+        .drag-handle { cursor: grab; touch-action: none; color: #BEBEBE; }
+        .drag-handle:active { cursor: grabbing; color: #7A848D; }
         
         /* 飛機圖示飛行方向 */
         .flight-arrow-outbound { transform: rotate(90deg); display: inline-block; }
@@ -83,7 +84,8 @@
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #CCD2CC; border-radius: 20px; }
         
         /* Loading Overlay */
-        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.95); z-index: 100; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease; }
+        .loading-overlay.hidden { opacity: 0; pointer-events: none; }
         .loading-spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #7A848D; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -93,9 +95,10 @@
 <div id="app" class="app-container">
 
     <!-- Loading Overlay -->
-    <div v-if="!isDataLoaded" class="loading-overlay">
+    <div class="loading-overlay" :class="{ 'hidden': isDataLoaded }">
         <div class="loading-spinner"></div>
         <div class="text-jp-slate text-sm font-bold">資料同步中...</div>
+        <div class="text-xs text-jp-gray-2 mt-2">若等待過久將自動進入離線模式</div>
     </div>
 
     <!-- Sync Status -->
@@ -107,7 +110,7 @@
     <!-- Header -->
     <div class="header-bg">
         <div class="header-image-container">
-            <img src="./banner.jpg" 
+            <img src="./banner.jpg"
                  onerror="this.src='https://images.unsplash.com/photo-1548578709-32269a838573?q=80&w=1920&auto=format&fit=crop'"
                  alt="北海道家族旅行">
             <div class="banner-text-overlay"></div>
@@ -222,14 +225,14 @@
 
         <!-- Tab 2: 資訊 -->
         <div v-if="currentTab === 'info'" class="animate-fade-in space-y-5 pb-20">
-             <!-- 匯率計算 (雙向) -->
+             <!-- 匯率計算 -->
              <div class="bg-gradient-to-br from-jp-slate to-jp-gray-2 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
                 <div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl"></div>
                 <div class="flex justify-between items-center mb-4 relative z-10">
                     <h3 class="font-bold flex items-center"><i class="fa-solid fa-calculator mr-2"></i> 匯率換算</h3>
                     <div class="flex items-center bg-white/10 rounded-lg px-2 py-1 border border-white/10">
                         <span class="text-xs text-jp-sand mr-1">匯率:</span>
-                        <input type="number" v-model="exchangeRate" @change="triggerSync" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
+                        <input type="number" v-model="exchangeRate" @change="onExchangeRateChange" step="0.001" class="w-12 bg-transparent text-white font-bold text-sm text-right focus:outline-none border-b border-white/30">
                     </div>
                 </div>
                 <div class="flex items-center justify-between gap-4 relative z-10">
@@ -825,18 +828,32 @@
     import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
     import { createApp, ref, computed, onMounted, watch, nextTick } from "https://unpkg.com/vue@3/dist/vue.esm-browser.js";
 
-    // Use system config
-    const firebaseConfig = JSON.parse(__firebase_config);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
-    let app;
-    let db;
-    let auth;
-    try { 
+    let app, db, auth, appId;
+    
+    // Config Init
+    try {
+        let firebaseConfig;
+        if (typeof __firebase_config !== 'undefined') {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } else {
+             // Fallback Config
+             firebaseConfig = {
+              apiKey: "AIzaSyDqqag1anowaW3XPQejcYZl8lUTgE7FRWs",
+              authDomain: "hokkaido-trip-55b8f.firebaseapp.com",
+              projectId: "hokkaido-trip-55b8f",
+              storageBucket: "hokkaido-trip-55b8f.firebasestorage.app",
+              messagingSenderId: "802810791692",
+              appId: "1:802810791692:web:b161ebee4e105f5bda6b29"
+            };
+        }
+        
+        appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         app = initializeApp(firebaseConfig); 
         db = getFirestore(app);
         auth = getAuth(app);
-    } catch (e) { console.error("Firebase Init Failed", e); }
+    } catch (e) { 
+        console.error("Firebase Init Failed", e); 
+    }
 
     createApp({
         setup() {
@@ -844,7 +861,7 @@
             const selectedDateIndex = ref(0);
             const isConnected = ref(false);
             const statusMessage = ref('連線中...');
-            const isDataLoaded = ref(false); // Added loading state
+            const isDataLoaded = ref(false); 
             const exchangeRate = ref(0.22);
             // currencyInput removed
             const members = ref(['徐續簡進', '孫吳空', '吳古雜糧', '何蕭了嗎', '陳黃廟']);
@@ -1152,11 +1169,11 @@
             let debounceTimer = null;
             const triggerSync = () => { if (isRemoteUpdate.value) return; statusMessage.value = '儲存中...'; clearTimeout(debounceTimer); debounceTimer = setTimeout(syncData, 1500); };
 
-            const DB_COLLECTION = "hokkaido_trip_v4"; // Using proper collection name structure for the app
-            const DB_DOC_ID = "main_data";
+            const DB_COLLECTION = "hokkaido_trip_v5"; // New Collection for Persistent
+            const DB_DOC_ID = "main_plan"; // Consistent ID
 
             const syncData = () => {
-                if (!db || !auth.currentUser) return; // Ensure auth
+                if (!db || !auth || !auth.currentUser) return; // Ensure auth
                 
                 const userId = auth.currentUser.uid;
                 // Path: artifacts/{appId}/public/data/{collectionName}/{docId}
@@ -1174,6 +1191,16 @@
             watch([shoppingList, expenses, itineraryData, mustBuyList, exchangeRate], () => { if (isRemoteUpdate.value) return; triggerSync(); }, { deep: true });
 
             onMounted(async () => {
+                // Failsafe: Remove loader after 3 seconds regardless of network status
+                setTimeout(() => {
+                    if (!isDataLoaded.value) {
+                        isDataLoaded.value = true;
+                        if (!isConnected.value) {
+                             statusMessage.value = "離線模式 (連線逾時)";
+                        }
+                    }
+                }, 3000);
+
                 if (auth) {
                     try {
                         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -1217,6 +1244,8 @@
                         console.error("Auth Error:", error);
                         statusMessage.value = "登入失敗";
                         isDataLoaded.value = true;
+                        // Still load initial data so user sees something
+                         itineraryData.value = populateInitialData();
                     }
                 } else {
                     isDataLoaded.value = true; // Fallback
@@ -1493,4 +1522,3 @@
 </script>
 </body>
 </html>
-
